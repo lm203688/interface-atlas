@@ -3,7 +3,9 @@ from interface_atlas import evidence
 
 def test_seed_schema_and_validation():
     rows = evidence.load()
-    assert len(rows) == 28
+    # v1.2：证据库扩至 103 条，CSV 与内嵌 SEED 必须逐条一致（可复现重建）
+    assert len(rows) >= 100
+    assert len(rows) == len(evidence.SEED)
     assert all(tuple(r.keys()) == evidence.FIELDS for r in rows)
     assert evidence.validate_row({"id": "X"})  # 必填缺失必须报错
     bad = dict(rows[0])
@@ -12,18 +14,22 @@ def test_seed_schema_and_validation():
 
 
 def test_query_filters():
-    assert len(evidence.query(gene="CHRNA7")) == 5
-    assert len(evidence.query(modality="photobiomodulation")) == 12
+    # 断言不依赖固定条数，但必须随过滤条件变化，防止恒真/硬编码
+    cherna = evidence.query(gene="CHRNA7")
+    pbm = evidence.query(modality="photobiomodulation")
+    assert len(cherna) > 5 and len(pbm) > len(cherna)
+    assert all(r["receiver_gene"].upper() == "CHRNA7" for r in cherna)
+    assert all("photobiomodulation" in r["modality"].lower() for r in pbm)
     assert evidence.query(grade_min="A")
     assert all(r["evidence_grade"] == "A" for r in evidence.query(grade_min="A"))
     assert all(r["human_evidence"] == "yes" for r in evidence.query(human_only=True))
-    assert evidence.query(keyword="retina")[0]["id"] == "PBM-012"
+    assert any(r["id"] == "PBM-012" for r in evidence.query(keyword="retina"))
 
 
 def test_audit_v11_source_closed_and_dose_banded():
     report = evidence.audit()
     assert report["status"] == "PASS"
-    assert report["schema_version"] == "1.1.0"
+    assert report["schema_version"] == "1.2.0"
     # 三条 A 级来源已补一手 DOI/URL，缺源归零
     assert report["missing_source_url"] == []
     assert report["grade_a_missing_source"] == []
