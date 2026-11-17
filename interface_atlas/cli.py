@@ -1,0 +1,134 @@
+"""interface-atlas 统一命令行入口."""
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from . import __version__, claimcheck, evidence, link, receptors
+
+
+def _print_rows(rows: list[dict], columns: list[str]) -> None:
+    if not rows:
+        print("（无匹配记录）")
+        return
+    widths = {c: max(len(c), max(len(str(r.get(c, ""))) for r in rows)) for c in columns}
+    print(" | ".join(c.ljust(widths[c]) for c in columns))
+    print("-+-".join("-" * widths[c] for c in columns))
+    for r in rows:
+        print(" | ".join(str(r.get(c, "")).ljust(widths[c]) for c in columns))
+
+
+def _receptors(args: argparse.Namespace) -> int:
+    if args.rebuild:
+        mat = receptors.build_matrix(args.zip)
+        path = receptors.save_matrix(mat)
+        print(f"已生成 {path}（{len(mat)} 细胞类型 × {len(mat.columns)} 接收器）")
+    df = receptors.load_matrix()
+    if args.audit:
+        mat = receptors.build_matrix(args.zip) if args.rebuild else None
+        report = receptors.audit(df, mat)
+        for k, v in report.items():
+            if k != "threshold_sensitivity":
+                print(f"{k}: {v}")
+        if args.audit_out:
+            out = receptors.write_audit(report, args.audit_out)
+            print(f"审计报告已写入 {out}")
+        return 0 if report["status"] == "PASS" else 1
+    if args.heatmap:
+        out = receptors.write_heatmap(df, args.heatmap, args.top_n)
+        print(f"热图已写入 {out}")
+        return 0
+    rows = receptors.top_cells(df, gene=args.gene, modality=args.modality, n=args.top).to_dict("records")
+    _print_rows(rows, ["gene", "receptor", "cell_type", "n_cpm", "pct_rank", "specificity_tau"])
+    return 0
+
+
+def _evidence(args: argparse.Namespace) -> int:
+    if args.init:
+        path = evidence.save_seed(args.csv)
+        print(f"已生成种子证据库 {path}（{len(evidence.SEED)} 条）")
+    rows = evidence.load(args.csv)
+    if args.audit:
+        report = evidence.audit(rows)
+        for k, v in report.items():
+            print(f"{k}: {v}")
+        return 0 if report["status"] == "PASS" else 1
+    rows = evidence.query(rows, modality=args.modality, gene=args.gene,
+                          cell_type=args.cell_type, grade_min=args.grade,
+                          human_only=args.human, keyword=args.keyword)
+    _print_rows(rows, ["id", "modality", "cell_type", "endpoint", "effect_direction",
+                       "evidence_grade", "source_url"])
+    return 0
+
+
+def _link(args: argparse.Namespace) -> int:
+    rows = link.crosslink()
+    if args.unmatched_only:
+        rows = [r for r in rows if not r["status"].startswith("MATCHED")]
+    _print_rows(rows, ["id", "gene", "evidence_cell_type", "matched_hpa_cell_type",
+                       "n_cpm", "status", "note"])
+    print(f"\n汇总：{link.summarize(link.crosslink())}")
+    return 0
+
+
+def _claim(args: argparse.Namespace) -> int:
+    result = claimcheck.check(args.text)
+    if args.markdown:
+        print(claimcheck.to_markdown(result))
+    else:
+        print(f"verdict: {result['verdict']}")
+        print(f"reason:  {result['reason']}")
+        print(f"matched: {', '.join(result['matched_ids']) or '无'}")
+        print(f"counter: {', '.join(result['counter_ids']) or '无'}")
+        print(f"falsification: {result['falsification']}")
+        print(f"fingerprint: {result['evidence_fingerprint']}")
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="interface-atlas", description="非药物接口层：接收器图谱 + 证据剂量图谱")
+    p.add_argument("--version", action="version", version=__version__)
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    r = sub.add_parser("receptors", help="A1 接收器能力图谱")
+    r.add_argument("--rebuild", action="store_true", help="从 HPA zip 重建表达矩阵")
+    r.add_argument("--zip", default=str(receptors.HPA_ZIP), help="HPA tsv.zip 路径")
+    r.add_argument("--top", type=int, default=12, help="显示前 N 行")
+    r.add_argument("--gene", help="按基因过滤")
+    r.add_argument("--modality", help="按模态关键词过滤")
+    r.add_argument("--audit", action="store_true", help="运行完整性审计")
+    r.add_argument("--audit-out", help="审计 Markdown 输出路径")
+    r.add_argument("--heatmap", help="热图 PNG 输出路径")
+    r.add_argument("--top-n", type=int, default=40, help="热图展示的细胞类型数")
+    r.set_defaults(func=_receptors)
+
+    e = sub.add_parser("evidence", help="A2 证据剂量图谱")
+    e.add_argument("--init", action="store_true", help="从内置种子重建证据 CSV")
+    e.add_argument("--csv", default=str(evidence.EVIDENCE_CSV), help="证据 CSV 路径")
+    e.add_argument("--audit", action="store_true", help="运行 schema 审计")
+    e.add_argument("--modality", help="按模态过滤")
+    e.add_argument("--gene", help="按接收器基因过滤")
+    e.add_argument("--cell-type", help="按细胞类型过滤")
+    e.add_argument("--grade", help="最低证据等级 A/B/C/D")
+    e.add_argument("--human", action="store_true", help="仅人体证据")
+    e.add_argument("--keyword", help="全文关键词")
+    e.set_defaults(func=_evidence)
+
+    l = sub.add_parser("link", help="交叉核验：证据库细胞 ↔ HPA 实际表达")
+    l.add_argument("--unmatched-only", action="store_true", help="只显示无法核验的记录")
+    l.set_defaults(func=_link)
+
+    c = sub.add_parser("claim", help="宣称-证据对齐判定（可证伪）")
+    c.add_argument("text", help="一句宣称，如『红光面板能抗衰老』")
+    c.add_argument("--markdown", action="store_true", help="Markdown 格式输出")
+    c.set_defaults(func=_claim)
+    return p
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    return int(args.func(args))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
