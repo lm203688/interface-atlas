@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
-from . import __version__, claimcheck, evidence, link, receptors
+from . import __version__, claimcheck, evidence, link, paramcheck, receptors
 
 
 def _print_rows(rows: list[dict], columns: list[str]) -> None:
@@ -85,6 +86,42 @@ def _claim(args: argparse.Namespace) -> int:
     return 0
 
 
+def _paramcheck(args: argparse.Namespace) -> int:
+    if args.batch:
+        rows = evidence.load()
+        if args.modality:
+            rows = evidence.query(rows, modality=args.modality)
+        reports = [paramcheck.check_evidence_row(r) for r in rows]
+        from collections import Counter
+        dist = Counter(r.verdict for r in reports)
+        print(f"批量预检 {len(reports)} 条：{dict(dist)}")
+        for rep in reports:
+            if rep.verdict in ("OUT_OF_WINDOW", "NO_EVIDENCE"):
+                print(f"  [{rep.verdict}] {rep.source_id}: {rep.reason}")
+        return 0
+    if args.json:
+        data = json.loads(Path(args.json).read_text(encoding="utf-8"))
+        report = paramcheck.check(data, source_id=str(data.get("id", "")))
+    else:
+        payload = {"modality": args.modality}
+        for kv in args.set or []:
+            if "=" not in kv:
+                print(f"参数格式错误（应为 key=value）：{kv}")
+                return 2
+            k, v = kv.split("=", 1)
+            payload[k.strip()] = v.strip()
+        for k in ("cell_type", "endpoint", "source_url"):
+            val = getattr(args, k, None)
+            if val:
+                payload[k] = val
+        report = paramcheck.check(payload)
+    if args.as_json:
+        print(paramcheck.to_json(report))
+    else:
+        print(paramcheck.render(report))
+    return 0 if report.verdict != "OUT_OF_WINDOW" else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="interface-atlas", description="非药物接口层：接收器图谱 + 证据剂量图谱")
     p.add_argument("--version", action="version", version=__version__)
@@ -122,6 +159,17 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("text", help="一句宣称，如『红光面板能抗衰老』")
     c.add_argument("--markdown", action="store_true", help="Markdown 格式输出")
     c.set_defaults(func=_claim)
+
+    pc = sub.add_parser("paramcheck", help="参数报告预检（本地自查，非监管结论）")
+    pc.add_argument("--modality", help="模态，如 photobiomodulation / focused ultrasound")
+    pc.add_argument("--set", action="append", metavar="KEY=VALUE", help="参数键值对，可重复")
+    pc.add_argument("--cell-type", help="靶细胞")
+    pc.add_argument("--endpoint", help="终点指标")
+    pc.add_argument("--source-url", help="一手来源 URL")
+    pc.add_argument("--json", help="从 JSON 文件读入完整报告")
+    pc.add_argument("--as-json", action="store_true", help="输出 JSON")
+    pc.add_argument("--batch", action="store_true", help="批量预检证据库全部记录")
+    pc.set_defaults(func=_paramcheck)
     return p
 
 
