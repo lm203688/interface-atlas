@@ -1,12 +1,14 @@
-from interface_atlas import link
+from interface_atlas import evidence, link
 
 
 def test_crosslink_shape_and_status():
     rows = link.crosslink()
-    assert len(rows) == 28
+    # 交叉核验必须覆盖证据库全量，随数据规模自动伸缩
+    assert len(rows) == len(evidence.load())
+    assert len(rows) >= 100
     assert all(tuple(r.keys()) == link.FIELDS for r in rows)
     summary = link.summarize(rows)
-    assert summary["total"] == 28
+    assert summary["total"] == len(rows)
     assert 0 < summary["matched_rate"] < 1  # 既不能全通过，也不能全失败
 
 
