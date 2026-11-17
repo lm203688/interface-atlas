@@ -1,0 +1,25 @@
+﻿evidence_cell_type,hpa_cell_type,basis
+intestinal L cells,enteroendocrine cells,解剖学等价：L 细胞是肠内分泌细胞亚型
+liver / intestine,hepatocytes,近似：肝组织主要实质细胞；intestine 部分无法映射
+pancreatic beta cells / brain,pancreatic islet cells,近似：胰岛包含 beta 细胞；brain 部分无法映射
+cortical neurons,brain excitatory neurons,近似：皮层投射神经元以兴奋性为主
+keratinocytes,basal keratinocytes,HPA 细分亚型：基底层角质形成细胞
+keratinocytes,suprabasal keratinocytes,HPA 细分亚型：基底上层角质形成细胞
+neurons,brain excitatory neurons,HPA 细分：兴奋性神经元
+neurons,brain inhibitory neurons,HPA 细分：抑制性神经元
+neurons,other brain neurons,HPA 细分：其他脑神经元
+Treg,,HPA 单细胞表无调节性 T 细胞分类
+hair follicle,,HPA 单细胞表无毛囊细胞分类
+chondrocytes,,HPA 单细胞表无软骨细胞分类
+osteocytes / BMSC,,HPA 单细胞表无骨细胞/间充质干细胞分类
+human serum,,体液样本非细胞类型
+human inflammatory markers,,生物标志物非细胞类型
+human autonomic,,生理系统非细胞类型
+35 clinical endpoints,,临床终点集合非细胞类型
+knee osteoarthritis,,患者群体非细胞类型
+fibromyalgia patients,,患者群体非细胞类型
+rheumatoid arthritis patients,,患者群体非细胞类型
+aging brain,,生理状态非单一细胞类型
+skin / retina,,组织/器官组合非单一细胞类型
+human skull,,物理屏障参考非接收器细胞
+brain,,brain excitatory/inhibitory/other 多个候选，需具体化
