@@ -13,6 +13,9 @@
 | `link` | 文献说的细胞，在数据里真有接收器吗 | A1 + A2 交叉核验 + `aliases.csv` | 匹配状态表，匹配不上就标 UNMATCHED，附证据库指纹 |
 | `claimcheck` | 一句设备宣称，证据到底支不支持 | A2 证据库 | 四级判定（支持/反驳/超出/无证据）+ 命中证据 ID + 推翻条件 |
 | `paramcheck` | 一份参数报告写得够不够资格谈复现 | 物理参数规格（光/电/声/机械） | 五级判定（完整/不足/越界/无证据/部分）+ 硬阈值核对 + 推翻条件 |
+| `dosimetry` | 一份剂量报告缺什么、能不能复现、能不能交给计算引擎补算 | **剂量报告规范 v1**（四层剂量本体，光/电/声/机械 + 代谢附录） | completeness_score + 四档可复现性判定 + `schema/dose_report_v1.schema.json` + 字段缺失图谱 |
+
+> **v0.4 战略转向**：项目从「证据审计工具」升级为「物理干预剂量学操作系统」的 L1 层。放疗靠 ICRU 报告标准 + DICOM-RT + TPS 成为精确医学；物理干预仍缺这一层。详见 [`DOSE_REPORTING_SPEC.md`](DOSE_REPORTING_SPEC.md) 与项目战略文档。`paramcheck`（判决）与 `dosimetry`（完整性诊断）正交并存，前者不放宽。
 
 ## 安装与快速开始
 
@@ -46,6 +49,14 @@ python -m interface_atlas.cli paramcheck --modality focused_ultrasound \
   --set pulse_duration=0.5ms --set duty_cycle=70% --set temperature_rise=1.2C \
   --cell-type "cortical neurons" --endpoint "motor modulation"
 python -m interface_atlas.cli paramcheck --batch   # 批量预检 103 条证据
+
+# 剂量报告完整性审计（v0.4，规范 v1）
+python -m interface_atlas.cli doseaudit --modality photobiomodulation \
+  --set wavelength=660nm --set power_density=25mW/cm2 --set fluence=6J/cm2 \
+  --set exposure_time=240s --set spot_area=1cm2 \
+  --set applicator_distance=2cm --set applicator_angle=90deg --set beam_profile=gaussian
+python -m interface_atlas.cli doseaudit --batch   # 批量审计：平均完整度 0.114
+python -m interface_atlas.cli dosegap             # 重建字段缺失图谱 data/dose_gap_map.json
 ```
 
 `data/receptor_expression.csv` 与 `data/evidence_matrix.csv` 已随仓库提供，不下载原始 zip 也能查询；`--rebuild` 才需要原始 zip。
@@ -106,6 +117,25 @@ v0.2 补上路线图的价值拐点——**ClaimCheck 推断层**。输入一句
 | `NO_EVIDENCE` | 无任何可核对参数 | 「62–72 Hz 频率修复细胞」 |
 
 判定**依被测报告而变**（改一个参数判定就变，有可证伪测试），带推翻条件；硬阈值越界时任何"有效"叙事都不能抵消风险改判。免责：本地自查线索，非监管/临床结论。
+
+## v0.4：剂量报告规范 v1 —— 从审计工具到生态入口
+
+战略转向：不做更大的证据库，做**物理干预剂量学的那一层**。放疗靠 ICRU 报告标准 + DICOM-RT + 治疗计划系统成为精确医学，物理干预尚缺这一层（PEMF 综述因欠报剂量无法做 meta；VNS 连 "neural dose" 都无共识）。
+
+**核心贡献：四层剂量本体**。设备报的参数 ≠ 靶区真实剂量（PNAS 胸部数字孪生证实同一外部剂量在不同解剖下靶区差数倍）：
+
+| 层 | 内容 | 作用 |
+|---|---|---|
+| T1 设备参数 | 波长/频率/功率/脉宽/幅度 | 方程输入 |
+| T2 界面条件 | 施加器距离/角度、线圈几何、颅骨衰减、电极位置 | 方程边界条件（文献最常漏报） |
+| T3 靶区剂量 | 靶区 fluence/声压/电场、组织光学声学参数 | 方程的解 |
+| T4 个体化解剖 | 群体值/体模/个体影像 | 可否个体化 |
+
+由此得到四档判定：`not_reproducible`（T1 缺）→ `underdetermined`（T1 齐 T2 缺，方程欠定）→ `reproducible_with_model`（T1+T2 齐，可交 L2 计算引擎求解）→ `reproducible_from_report`（T1/T2/T3 全齐）。**判定依报告逐层变化，有可证伪测试。**
+
+**实测基线**（`dosegap` 生成，103 条）：平均完整度 **0.114**，最高 0.40；99 条 `not_reproducible`、4 条 `underdetermined`、`reproducible_*` **0 条**。缺失最严重的是 T2 界面条件与 T3 靶区剂量——PBM 37 条全不报施加器距离，tFUS 15 条全不报换能器几何/颅骨衰减/靶区声压，85 条主表记录全不报解剖来源。**这不是数据不够，是报告标准缺位的量化证据。**
+
+产物：[`DOSE_REPORTING_SPEC.md`](DOSE_REPORTING_SPEC.md)（人类可读规范）、`schema/dose_report_v1.schema.json`（机器可读，JSON Schema draft 2020-12）、`data/dose_gap_map.json`（实证图谱）。规范是社区草案 v1，非 ICRU/FDA/ISO 官方标准；分数度量完整性，不度量疗效或安全。`paramcheck` 保留原有五级判决不放宽，与本模块正交并存。
 
 ## 首批发现（可证伪，非结论）
 
