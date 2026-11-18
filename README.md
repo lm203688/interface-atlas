@@ -16,10 +16,13 @@
 | `dosimetry` | 一份剂量报告缺什么、能不能复现、能不能交给计算引擎补算 | **剂量报告规范 v1**（四层剂量本体，光/电/声/机械 + 代谢附录） | completeness_score + 四档可复现性判定 + `schema/dose_report_v1.schema.json` + 字段缺失图谱 |
 | `light_field` | 设备/组织参数 → 靶区真实剂量场（光模态） | P1 扩散近似 + Farrell 1992 偶极子 + 外推边界 | 深度分辨光通量/吸收场、闭式逆设计、可微接口、适用性告警 |
 | `mc_light` | 独立金标准校验剂量场、量化代理误差 | 1D 多层 Monte Carlo（numpy 向量化） | Prahl 基准验证、P1 代理误差测量、解剖敏感性实验 |
+| `calibration` | 剂量点估计的偏差校正 + 可信区间 | split conformal prediction（三段分离，有限样本覆盖保证） | 去偏点估计、(1−α) 覆盖区间、可证伪的覆盖率/反证报告 |
 
 > **v0.4 战略转向**：项目从「证据审计工具」升级为「物理干预剂量学操作系统」的 L1 层。放疗靠 ICRU 报告标准 + DICOM-RT + TPS 成为精确医学；物理干预仍缺这一层。详见 [`DOSE_REPORTING_SPEC.md`](DOSE_REPORTING_SPEC.md) 与项目战略文档。`paramcheck`（判决）与 `dosimetry`（完整性诊断）正交并存，前者不放宽。
 >
 > **v0.5 L2 落地**：L1 把「T1+T2 齐缺 T3」判为 `reproducible_with_model`——`light_field` 就是这个可计算的 model。承接「设备参数 ≠ 靶区剂量」这一核心难题，用独立 MC（`mc_light`）作金标准、P1 扩散解作可微代理，误差如实量化。详见 [`L2_VALIDATION.md`](L2_VALIDATION.md)。
+>
+> **v0.6 L2 中阶——从点估计到可信区间**：实测发现 P1 相对 MC 的偏差 `r≈1.15` 是稳定的系统偏差（随机噪声仅 ~2%，无参数曲面可拟合），故用 split conformal 给剂量预测配**有限样本有效的覆盖区间**：真实 μeff 以 ≥1−α 概率落入区间。这是领域里少见的「剂量报告带置信度」。详见 [`CALIBRATION.md`](CALIBRATION.md)。
 
 ## 安装与快速开始
 
@@ -66,6 +69,10 @@ python -m interface_atlas.cli dosegap             # 重建字段缺失图谱 dat
 python -m interface_atlas.cli dosefield --preset skin_nir --target-depth 0.3
 python -m interface_atlas.cli dosefield --preset muscle_nir --target-depth 1.0 --inverse 0.01
 python -m interface_atlas.cli mcbench --which all --photons 200000   # 独立验证三件套
+
+# L2 中阶：带覆盖保证的校准剂量区间（v0.6）
+python -m interface_atlas.cli calibrate --preset muscle_nir --target-depth 1.0 --alpha 0.10
+python -m interface_atlas.cli calibrate --mu-a 1.5 --mu-sp 75 --target-depth 0.5 --as-json
 ```
 
 `data/receptor_expression.csv` 与 `data/evidence_matrix.csv` 已随仓库提供，不下载原始 zip 也能查询；`--rebuild` 才需要原始 zip。
