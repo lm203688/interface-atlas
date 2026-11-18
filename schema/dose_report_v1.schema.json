@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lm203688/interface-atlas/blob/main/schema/dose_report_v1.schema.json",
+  "title": "Physical Intervention Dose Report Spec v1",
+  "description": "物理干预剂量报告规范 v1（社区草案）：四层剂量本体 T1 设备/T2 界面/T3 靶区/T4 个体化",
+  "type": "object",
+  "required": [
+    "id",
+    "modality"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "报告唯一标识"
+    },
+    "modality": {
+      "type": "string",
+      "enum": [
+        "photobiomodulation",
+        "vagus nerve stimulation",
+        "focused ultrasound",
+        "mechanical loading",
+        "metabolic / microbiota"
+      ]
+    },
+    "signal": {
+      "type": "string",
+      "description": "自由文本描述；可被正则抽取但不替代必报字段"
+    },
+    "wavelength": {
+      "type": "string",
+      "description": "波长（T1，单位 nm）"
+    },
+    "power_density": {
+      "type": "string",
+      "description": "辐照度/功率密度（T1，单位 mW/cm2）"
+    },
+    "fluence": {
+      "type": "string",
+      "description": "能量密度（T1，单位 J/cm2）"
+    },
+    "exposure_time": {
+      "type": "string",
+      "description": "照射时长（T1，单位 s）"
+    },
+    "spot_area": {
+      "type": "string",
+      "description": "光斑面积（T1，单位 cm2）"
+    },
+    "applicator_distance": {
+      "type": "string",
+      "description": "施加器-皮肤距离（T2，单位 cm）"
+    },
+    "applicator_angle": {
+      "type": "string",
+      "description": "入射角（T2，单位 deg）"
+    },
+    "beam_profile": {
+      "type": "string",
+      "description": "光束分布（T2，单位 enum: uniform|gaussian）",
+      "enum": [
+        " uniform",
+        "gaussian"
+      ]
+    },
+    "target_fluence": {
+      "type": "string",
+      "description": "靶区实际光通量（T3，单位 J/cm2）"
+    },
+    "target_depth": {
+      "type": "string",
+      "description": "靶区深度（T3，单位 cm）"
+    },
+    "tissue_optics": {
+      "type": "string",
+      "description": "组织光学参数（T3，单位 mu_a/mu_s (1/cm)）"
+    },
+    "anatomy_source": {
+      "type": "string",
+      "description": "解剖来源（T4，单位 enum: phantom|subject_imaging|population）",
+      "enum": [
+        " phantom",
+        "subject_imaging",
+        "population"
+      ]
+    },
+    "frequency": {
+      "type": "string",
+      "description": "频率（T1，单位 Hz）"
+    },
+    "pulse_width": {
+      "type": "string",
+      "description": "脉宽（T1，单位 us）"
+    },
+    "current": {
+      "type": "string",
+      "description": "电流强度（T1，单位 mA）"
+    },
+    "session_duration": {
+      "type": "string",
+      "description": "单次时长（T1，单位 min）"
+    },
+    "site": {
+      "type": "string",
+      "description": "刺激部位（T1，单位 enum: cervical|auricular|abdominal|other）",
+      "enum": [
+        " cervical",
+        "auricular",
+        "abdominal",
+        "other"
+      ]
+    },
+    "electrode_geometry": {
+      "type": "string",
+      "description": "电极几何/触点配置（T2，单位 text）"
+    },
+    "fascicle_target": {
+      "type": "string",
+      "description": "靶纤维束（T2，单位 text）"
+    },
+    "impedance": {
+      "type": "string",
+      "description": "接口阻抗（T2，单位 kOhm）"
+    },
+    "neural_dose": {
+      "type": "string",
+      "description": "神经剂量(ECAP归一化)（T3，单位 mV or normalized ECAP）"
+    },
+    "target_organ_engagement": {
+      "type": "string",
+      "description": "靶器官接 engagement（T3，单位 text）"
+    },
+    "mechanical_index": {
+      "type": "string",
+      "description": "机械指数（T1，单位 MI）"
+    },
+    "intensity": {
+      "type": "string",
+      "description": "声强（T1，单位 W/cm2 or mW/cm2）"
+    },
+    "pulse_duration": {
+      "type": "string",
+      "description": "脉冲宽度（T1，单位 ms or us）"
+    },
+    "duty_cycle": {
+      "type": "string",
+      "description": "占空比（T1，单位 %）"
+    },
+    "temperature_rise": {
+      "type": "string",
+      "description": "温升（T1，单位 degC）"
+    },
+    "transducer_geometry": {
+      "type": "string",
+      "description": "换能器几何（T2，单位 text）"
+    },
+    "skull_attenuation": {
+      "type": "string",
+      "description": "颅骨衰减（T2，单位 dB or text）"
+    },
+    "target_pressure": {
+      "type": "string",
+      "description": "靶区声压（T3，单位 MPa）"
+    },
+    "target_temperature": {
+      "type": "string",
+      "description": "靶区温度（T3，单位 degC）"
+    },
+    "tissue_acoustics": {
+      "type": "string",
+      "description": "组织声学参数（T3，单位 attenuation/speed (dB/cm/MHz)）"
+    },
+    "strain_or_shear": {
+      "type": "string",
+      "description": "应变/剪切应力（T1，单位 % or Pa or dyne/cm2）"
+    },
+    "substrate_stiffness": {
+      "type": "string",
+      "description": "基质刚度（T1，单位 kPa）"
+    },
+    "loading_waveform": {
+      "type": "string",
+      "description": "加载波形（T2，单位 enum: static|cyclic|impact）",
+      "enum": [
+        " static",
+        "cyclic",
+        "impact"
+      ]
+    },
+    "contact_geometry": {
+      "type": "string",
+      "description": "接触几何（T2，单位 text）"
+    },
+    "target_strain": {
+      "type": "string",
+      "description": "靶区实际应变（T3，单位 %）"
+    },
+    "tissue_viscoelasticity": {
+      "type": "string",
+      "description": "组织粘弹性参数（T3，单位 text）"
+    },
+    "exposure_amount": {
+      "type": "string",
+      "description": "摄入/暴露量（T1，单位 g/day or CFU or mmol/L）"
+    },
+    "exposure_duration": {
+      "type": "string",
+      "description": "暴露时长（T1，单位 day or week）"
+    },
+    "compound_identity": {
+      "type": "string",
+      "description": "化合物/菌株身份（T2，单位 text）"
+    },
+    "target_concentration": {
+      "type": "string",
+      "description": "靶部位浓度（T3，单位 mmol/L or uM）"
+    }
+  },
+  "x-tier-weights": {
+    "1": 0.4,
+    "2": 0.25,
+    "3": 0.25,
+    "4": 0.1
+  },
+  "x-disclaimer": "DoseAudit 基于公开文献的社区草案规范 v1，非 ICRU/FDA/ISO 官方标准；completeness_score 度量报告完整性，不代表疗效或安全性。"
+}
