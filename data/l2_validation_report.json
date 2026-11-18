@@ -1,0 +1,70 @@
+{
+  "title": "L2 光剂量场引擎验证报告 v0.1",
+  "date": "2026-11-18",
+  "goal": "验证 P1 扩散代理与独立 MC 求解器的可信度，量化误差而非掩盖",
+  "experiments": {
+    "prahl_mcml_benchmark": {
+      "passed": true,
+      "criterion": "Tt±2% + energy balance; Rd is reported only (simplified boundary)",
+      "expected": {
+        "Rd": 0.09734,
+        "Tt": 0.66096
+      },
+      "measured": {
+        "Rd": 0.09104,
+        "Tt": 0.660834,
+        "absorbed": 0.248126
+      },
+      "relative_error": {
+        "Rd": -0.06473,
+        "Tt": -0.00019
+      },
+      "rd_known_limitation": "简化实现无 Fresnel/Henderson 边界校正，Rd 系统性偏低 ~5-7%；已如实报告",
+      "energy_balance_error": 0.0,
+      "n_photons": 200000,
+      "source": "Prahl 1988 PhD thesis; Wang, Jacques & Zheng 1995 MCML, Comput Methods Programs Biomed 47:131"
+    },
+    "p1_surrogate_error": {
+      "role": "measure P1 surrogate error vs independent MC (not a pass/fail gate)",
+      "fitted_mu_eff_per_mm": 0.2007,
+      "analytic_p1_mu_eff_per_mm": 0.17407,
+      "surrogate_relative_error": 0.15297,
+      "patterson1989_reference_error": -0.0029,
+      "interpretation": "偏差反映 P1 近似的适用域误差；MC 是金标准，扩散解是代理",
+      "n_fit_points": 100,
+      "n_photons": 300000,
+      "source": "Patterson, Chance & Wilson 1989, Appl Opt 28:2331, pp2331-2339"
+    },
+    "anatomy_sensitivity": {
+      "cases": [
+        {
+          "fat_thickness_mm": 0.0,
+          "target_absorption_rel": 2.51e-07,
+          "Rd": 0.1483,
+          "Tt": 0.0
+        },
+        {
+          "fat_thickness_mm": 2.0,
+          "target_absorption_rel": 8.428e-06,
+          "Rd": 0.1487,
+          "Tt": 0.0
+        },
+        {
+          "fat_thickness_mm": 5.0,
+          "target_absorption_rel": 0.000770374,
+          "Rd": 0.1488,
+          "Tt": 0.0
+        }
+      ],
+      "max_min_ratio": 3069.219,
+      "note": "同一表面参数、靶区@6mm；脂肪层厚度改变导致靶区剂量差异（PNAS 数字孪生论点）",
+      "interpretation": "脂肪相对透明形成光通道；解剖差异可让同参数靶区剂量差若干倍——这正是'设备参数≠靶区剂量'的定量证据"
+    }
+  },
+  "honest_limitations": [
+    "简化 MC 缺 Fresnel/Henderson 边界校正，Rd 系统性偏低 ~6.5%，如实报告不作通过判据",
+    "P1 扩散近似在 g=0.9 高各向异性下相对独立 MC 有 ~15% 系统误差——代理不是金标准",
+    "输出为相对剂量场（表面归一化），绝对剂量需表面实测 + 独立 MC 标定",
+    "仅处理均匀/分层平板与半无限几何；不碰异质解剖、全脑、温度场"
+  ]
+}
