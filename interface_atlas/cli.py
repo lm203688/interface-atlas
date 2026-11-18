@@ -5,7 +5,7 @@ import argparse
 import json
 from pathlib import Path
 
-from . import __version__, claimcheck, evidence, link, paramcheck, receptors
+from . import __version__, claimcheck, dosimetry, evidence, link, paramcheck, receptors
 
 
 def _print_rows(rows: list[dict], columns: list[str]) -> None:
@@ -122,6 +122,58 @@ def _paramcheck(args: argparse.Namespace) -> int:
     return 0 if report.verdict != "OUT_OF_WINDOW" else 1
 
 
+def _doseaudit(args: argparse.Namespace) -> int:
+    if args.batch:
+        rows = evidence.load(Path(args.csv) if args.csv else evidence.EVIDENCE_CSV)
+        if args.modality:
+            rows = evidence.query(rows, modality=args.modality)
+        reports = [dosimetry.audit(r, source_id=r.get("id", "")) for r in rows]
+        from collections import Counter
+        dist = Counter(r.reproducibility for r in reports)
+        scores = [r.completeness_score for r in reports]
+        print(f"剂量完整性批量审计 {len(reports)} 条：{dict(dist)}")
+        print(f"平均完整度 {sum(scores)/len(scores):.3f}，最高 {max(scores):.3f}")
+        print("\n可复现性最佳的前 5 条：")
+        for r in sorted(reports, key=lambda x: -x.completeness_score)[:5]:
+            print(f"  {r.completeness_score:.3f}  {r.reproducibility:24} {r.source_id}")
+        return 0
+    if args.json:
+        data = json.loads(Path(args.json).read_text(encoding="utf-8"))
+        rep = dosimetry.audit(data, source_id=str(data.get("id", "")))
+    else:
+        if not args.modality:
+            print("错误：需指定 --modality 或 --json 或 --batch")
+            return 2
+        payload: dict = {"modality": args.modality}
+        for kv in args.set or []:
+            if "=" not in kv:
+                print(f"参数格式错误（应为 key=value）：{kv}")
+                return 2
+            k, v = kv.split("=", 1)
+            payload[k.strip()] = v.strip()
+        if args.signal:
+            payload["signal"] = args.signal
+        rep = dosimetry.audit(payload)
+    print(dosimetry.to_json(rep) if args.as_json else dosimetry.render(rep))
+    return 0
+
+
+def _dosegap(args: argparse.Namespace) -> int:
+    csv_path = Path(args.csv) if args.csv else evidence.EVIDENCE_CSV
+    reports = dosimetry.audit_library(csv_path)
+    gap = dosimetry.gap_map(reports)
+    out = Path(args.out) if args.out else Path("data/dose_gap_map.json")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(gap, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"字段缺失图谱已写入 {out}")
+    print(f"  总记录 {gap['total_rows']}，平均完整度 {gap['overall']['mean_completeness']}")
+    print(f"  可复现性分布 {gap['overall']['verdict_distribution']}")
+    print("\n缺失率最高的 5 个字段：")
+    for x in gap["field_missing_rate"][:5]:
+        print(f"  {x['missing_rate']:5.0%}  {x['key']}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="interface-atlas", description="非药物接口层：接收器图谱 + 证据剂量图谱")
     p.add_argument("--version", action="version", version=__version__)
@@ -170,6 +222,21 @@ def build_parser() -> argparse.ArgumentParser:
     pc.add_argument("--as-json", action="store_true", help="输出 JSON")
     pc.add_argument("--batch", action="store_true", help="批量预检证据库全部记录")
     pc.set_defaults(func=_paramcheck)
+
+    da = sub.add_parser("doseaudit", help="剂量报告完整性审计（规范 v1，社区草案）")
+    da.add_argument("--modality", help="模态，如 photobiomodulation")
+    da.add_argument("--set", action="append", metavar="KEY=VALUE", help="字段键值对，可重复")
+    da.add_argument("--signal", help="自由文本描述（可正则抽取，不替代必报字段）")
+    da.add_argument("--json", help="从 JSON 文件读入完整报告")
+    da.add_argument("--as-json", action="store_true", help="输出 JSON")
+    da.add_argument("--batch", action="store_true", help="批量审计证据库")
+    da.add_argument("--csv", help="证据库 CSV 路径（批量时用）")
+    da.set_defaults(func=_doseaudit)
+
+    dg = sub.add_parser("dosegap", help="生成字段缺失图谱（规范的实证基础）")
+    dg.add_argument("--csv", help="证据库 CSV 路径")
+    dg.add_argument("--out", help="输出 JSON 路径，默认 data/dose_gap_map.json")
+    dg.set_defaults(func=_dosegap)
     return p
 
 
