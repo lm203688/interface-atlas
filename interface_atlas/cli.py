@@ -5,7 +5,8 @@ import argparse
 import json
 from pathlib import Path
 
-from . import __version__, claimcheck, dosimetry, evidence, link, paramcheck, receptors
+from . import __version__, claimcheck, dosimetry, evidence, link, mc_light, paramcheck, receptors
+from . import light_field
 
 
 def _print_rows(rows: list[dict], columns: list[str]) -> None:
@@ -174,6 +175,73 @@ def _dosegap(args: argparse.Namespace) -> int:
     return 0
 
 
+def _dosefield(args: argparse.Namespace) -> int:
+    """L2 光剂量场：正向计算 + 逆设计（承接 L1 的 reproducible_with_model）。"""
+    if args.preset:
+        if args.preset not in light_field.TISSUE_PRESETS:
+            print(f"未知预设 {args.preset}；可用：{', '.join(light_field.TISSUE_PRESETS)}")
+            return 2
+        tissue = light_field.TISSUE_PRESETS[args.preset]
+    else:
+        if args.mu_a is None or args.mu_sp is None:
+            print("请提供 --preset 或同时提供 --mu-a 与 --mu-sp")
+            return 2
+        tissue = light_field.TissueOptics(
+            float(args.mu_a), float(args.mu_sp), float(args.g), float(args.n),
+            args.preset or "custom",
+        )
+    depths = None
+    if args.depths:
+        depths = [float(x) for x in args.depths.split(",")]
+
+    if args.inverse is not None:
+        inv = light_field.inverse_irradiance(
+            float(args.inverse), tissue=tissue,
+            target_depth_cm=float(args.target_depth), geometry=args.geometry,
+        )
+        print("## L2 逆设计（闭式解 + 正向复核）")
+        print(f"- 光学参数: μa={tissue.mu_a}/cm, μs'={tissue.mu_s_prime}/cm, n={tissue.n}")
+        print(f"- 靶区深度 {args.target_depth} cm, 目标相对剂量 {args.inverse}")
+        print(f"- 需表面剂量倍数: {inv['required_surface_multiplier']:.4f}")
+        print(f"- 正向复核残差: {inv['residual_rel']:.2e}")
+        print(f"- 可行性: {'可行' if inv['feasible'] else '不可行'}")
+        if inv.get("infeasibility_note"):
+            print(f"  ⚠ {inv['infeasibility_note']}")
+        print(f"> {inv['caveat']}")
+        if args.as_json:
+            print(json.dumps(inv, ensure_ascii=False, indent=2))
+    else:
+        res = light_field.dose_field(
+            tissue, depths_cm=depths, max_depth_cm=float(args.max_depth),
+            n_points=int(args.points), target_depth_cm=float(args.target_depth),
+            geometry=args.geometry,
+        )
+        print(light_field.render(res))
+        if args.as_json:
+            print(json.dumps(res.as_dict(), ensure_ascii=False, indent=2))
+    return 0
+
+
+def _mcbench(args: argparse.Namespace) -> int:
+    """L2 验证：独立 MC 对权威基准 + P1 代理误差 + 解剖敏感性。"""
+    which = args.which
+    n = int(args.photons)
+    if which in ("all", "prahl"):
+        r = mc_light.validate_prahl_benchmark(n_photons=n)
+        print("=== Prahl/Wang-Jacques MCML 基准 ===")
+        print(json.dumps(r, ensure_ascii=False, indent=2))
+        print(f"[{'PASS' if r['passed'] else 'FAIL'}] 透过率 Tt 误差 {r['relative_error']['Tt']*100:+.3f}%")
+    if which in ("all", "patterson"):
+        r2 = mc_light.validate_patterson_mu_eff(n_photons=n)
+        print("\n=== P1 扩散代理 vs 独立 MC 的误差测量 ===")
+        print(json.dumps(r2, ensure_ascii=False, indent=2))
+    if which in ("all", "anatomy"):
+        r3 = mc_light.anatomy_sensitivity()
+        print("\n=== 解剖敏感性（PNAS 论点）===")
+        print(json.dumps(r3, ensure_ascii=False, indent=2))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="interface-atlas", description="非药物接口层：接收器图谱 + 证据剂量图谱")
     p.add_argument("--version", action="version", version=__version__)
@@ -237,6 +305,26 @@ def build_parser() -> argparse.ArgumentParser:
     dg.add_argument("--csv", help="证据库 CSV 路径")
     dg.add_argument("--out", help="输出 JSON 路径，默认 data/dose_gap_map.json")
     dg.set_defaults(func=_dosegap)
+
+    df = sub.add_parser("dosefield", help="L2 光剂量场：设备/组织参数 → 靶区剂量（含逆设计）")
+    df.add_argument("--preset", help="组织预设，如 skin_nir / fat_nir / muscle_nir")
+    df.add_argument("--mu-a", dest="mu_a", help="吸收系数 /cm（与 --mu-sp 一起用）")
+    df.add_argument("--mu-sp", dest="mu_sp", help="约化散射系数 /cm")
+    df.add_argument("--g", default="0.90", help="各向异性因子，默认 0.90")
+    df.add_argument("--n", default="1.40", help="相对折射率，默认 1.40")
+    df.add_argument("--target-depth", dest="target_depth", default="0.5", help="靶区深度 cm，默认 0.5")
+    df.add_argument("--max-depth", dest="max_depth", default="2.0", help="最大深度 cm，默认 2.0")
+    df.add_argument("--points", default="41", help="深度采样点数，默认 41")
+    df.add_argument("--depths", help="自定义深度列表，逗号分隔，如 0.01,0.1,0.5,1.0")
+    df.add_argument("--geometry", choices=["plane", "point"], default="plane", help="照射几何，默认 plane")
+    df.add_argument("--inverse", help="逆设计：目标靶区相对剂量，反推所需表面剂量倍数")
+    df.add_argument("--as-json", dest="as_json", action="store_true", help="额外输出 JSON")
+    df.set_defaults(func=_dosefield)
+
+    mb = sub.add_parser("mcbench", help="L2 验证实验：独立 MC 基准 / P1 代理误差 / 解剖敏感性")
+    mb.add_argument("--which", choices=["all", "prahl", "patterson", "anatomy"], default="all")
+    mb.add_argument("--photons", default="200000", help="光子数，默认 200000")
+    mb.set_defaults(func=_mcbench)
     return p
 
 
