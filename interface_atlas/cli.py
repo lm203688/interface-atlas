@@ -5,7 +5,7 @@ import argparse
 import json
 from pathlib import Path
 
-from . import __version__, claimcheck, dosimetry, evidence, link, mc_light, paramcheck, receptors
+from . import __version__, calibration, claimcheck, dosimetry, evidence, link, mc_light, paramcheck, receptors
 from . import light_field
 
 
@@ -242,6 +242,50 @@ def _mcbench(args: argparse.Namespace) -> int:
     return 0
 
 
+def _calibrate(args: argparse.Namespace) -> int:
+    """L2 中阶：split conformal 剂量区间（给定组织 → 点估计 + 覆盖区间）。"""
+    if args.rebuild:
+        print("重建校准报告（跑独立 MC，约需数分钟）…")
+        rep = calibration.build_calibration(
+            n_fit=int(args.fit), n_calib=int(args.calib), n_test=int(args.test),
+            n_photons=int(args.photons),
+        )
+        p = calibration.save_calibration(rep)
+        print(f"校准报告已写入 {p}")
+        print(f"  偏差因子 b={rep.bias:.4f}，q={ {k: round(v, 4) for k, v in rep.q_by_alpha.items()} }")
+        print(f"  test 覆盖率={ {k: round(v, 3) for k, v in rep.coverage_by_alpha.items()} }")
+        print(f"  反证区间砍半: {'PASS' if rep.falsification['passed'] else 'FAIL'}")
+        if args.as_json:
+            print(json.dumps(rep.as_dict(), ensure_ascii=False, indent=2))
+        return 0 if rep.falsification["passed"] else 1
+
+    if args.preset:
+        if args.preset not in light_field.TISSUE_PRESETS:
+            print(f"未知预设 {args.preset}；可用：{', '.join(light_field.TISSUE_PRESETS)}")
+            return 2
+        tissue = light_field.TISSUE_PRESETS[args.preset]
+    elif args.mu_a is not None and args.mu_sp is not None:
+        tissue = light_field.TissueOptics(float(args.mu_a), float(args.mu_sp),
+                                          float(args.g), float(args.n), "custom")
+    else:
+        print("请提供 --preset 或同时 --mu-a/--mu-sp，或用 --rebuild 重建报告")
+        return 2
+
+    try:
+        r = calibration.calibrated_interval(
+            tissue, target_depth_cm=float(args.target_depth), alpha=float(args.alpha),
+            geometry=args.geometry,
+        )
+    except FileNotFoundError as exc:
+        print(f"错误：{exc}")
+        return 2
+    if args.as_json:
+        print(json.dumps(r, ensure_ascii=False, indent=2))
+    else:
+        print(calibration.render(r))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="interface-atlas", description="非药物接口层：接收器图谱 + 证据剂量图谱")
     p.add_argument("--version", action="version", version=__version__)
@@ -325,6 +369,23 @@ def build_parser() -> argparse.ArgumentParser:
     mb.add_argument("--which", choices=["all", "prahl", "patterson", "anatomy"], default="all")
     mb.add_argument("--photons", default="200000", help="光子数，默认 200000")
     mb.set_defaults(func=_mcbench)
+
+    cb = sub.add_parser("calibrate", help="L2 中阶：split conformal 剂量区间（有限样本覆盖保证）")
+    cb.add_argument("--preset", help="组织预设，如 muscle_nir / skin_nir")
+    cb.add_argument("--mu-a", dest="mu_a", help="吸收系数 /cm（与 --mu-sp 一起用）")
+    cb.add_argument("--mu-sp", dest="mu_sp", help="约化散射系数 /cm")
+    cb.add_argument("--g", default="0.90", help="各向异性因子，默认 0.90")
+    cb.add_argument("--n", default="1.40", help="相对折射率，默认 1.40")
+    cb.add_argument("--target-depth", dest="target_depth", default="0.5", help="靶区深度 cm")
+    cb.add_argument("--alpha", default="0.10", help="1-alpha 覆盖目标，默认 0.10")
+    cb.add_argument("--geometry", choices=["plane", "point"], default="plane")
+    cb.add_argument("--as-json", dest="as_json", action="store_true", help="输出 JSON")
+    cb.add_argument("--rebuild", action="store_true", help="重建校准报告（跑独立 MC，较慢）")
+    cb.add_argument("--fit", default="8", help="rebuild: fit 段参数点数")
+    cb.add_argument("--calib", default="40", help="rebuild: calib 段参数点数")
+    cb.add_argument("--test", default="24", help="rebuild: test 段参数点数")
+    cb.add_argument("--photons", default="80000", help="rebuild: 每点光子数")
+    cb.set_defaults(func=_calibrate)
     return p
 
 
