@@ -14,8 +14,12 @@
 | `claimcheck` | 一句设备宣称，证据到底支不支持 | A2 证据库 | 四级判定（支持/反驳/超出/无证据）+ 命中证据 ID + 推翻条件 |
 | `paramcheck` | 一份参数报告写得够不够资格谈复现 | 物理参数规格（光/电/声/机械） | 五级判定（完整/不足/越界/无证据/部分）+ 硬阈值核对 + 推翻条件 |
 | `dosimetry` | 一份剂量报告缺什么、能不能复现、能不能交给计算引擎补算 | **剂量报告规范 v1**（四层剂量本体，光/电/声/机械 + 代谢附录） | completeness_score + 四档可复现性判定 + `schema/dose_report_v1.schema.json` + 字段缺失图谱 |
+| `light_field` | 设备/组织参数 → 靶区真实剂量场（光模态） | P1 扩散近似 + Farrell 1992 偶极子 + 外推边界 | 深度分辨光通量/吸收场、闭式逆设计、可微接口、适用性告警 |
+| `mc_light` | 独立金标准校验剂量场、量化代理误差 | 1D 多层 Monte Carlo（numpy 向量化） | Prahl 基准验证、P1 代理误差测量、解剖敏感性实验 |
 
 > **v0.4 战略转向**：项目从「证据审计工具」升级为「物理干预剂量学操作系统」的 L1 层。放疗靠 ICRU 报告标准 + DICOM-RT + TPS 成为精确医学；物理干预仍缺这一层。详见 [`DOSE_REPORTING_SPEC.md`](DOSE_REPORTING_SPEC.md) 与项目战略文档。`paramcheck`（判决）与 `dosimetry`（完整性诊断）正交并存，前者不放宽。
+>
+> **v0.5 L2 落地**：L1 把「T1+T2 齐缺 T3」判为 `reproducible_with_model`——`light_field` 就是这个可计算的 model。承接「设备参数 ≠ 靶区剂量」这一核心难题，用独立 MC（`mc_light`）作金标准、P1 扩散解作可微代理，误差如实量化。详见 [`L2_VALIDATION.md`](L2_VALIDATION.md)。
 
 ## 安装与快速开始
 
@@ -57,6 +61,11 @@ python -m interface_atlas.cli doseaudit --modality photobiomodulation \
   --set applicator_distance=2cm --set applicator_angle=90deg --set beam_profile=gaussian
 python -m interface_atlas.cli doseaudit --batch   # 批量审计：平均完整度 0.114
 python -m interface_atlas.cli dosegap             # 重建字段缺失图谱 data/dose_gap_map.json
+
+# L2 剂量场：参数 → 靶区剂量（v0.5，光模态）
+python -m interface_atlas.cli dosefield --preset skin_nir --target-depth 0.3
+python -m interface_atlas.cli dosefield --preset muscle_nir --target-depth 1.0 --inverse 0.01
+python -m interface_atlas.cli mcbench --which all --photons 200000   # 独立验证三件套
 ```
 
 `data/receptor_expression.csv` 与 `data/evidence_matrix.csv` 已随仓库提供，不下载原始 zip 也能查询；`--rebuild` 才需要原始 zip。
