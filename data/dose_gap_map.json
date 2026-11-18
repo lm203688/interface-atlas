@@ -1,0 +1,682 @@
+{
+  "schema": "dose_gap_map/v1",
+  "total_rows": 103,
+  "modality_count": {
+    "focused ultrasound": 15,
+    "mechanical loading": 15,
+    "metabolic / microbiota": 18,
+    "photobiomodulation": 37,
+    "vagus nerve stimulation": 18
+  },
+  "by_modality": {
+    "focused ultrasound": {
+      "n": 15,
+      "field_missing": [
+        {
+          "key": "frequency",
+          "label": "频率",
+          "tier": 1,
+          "missing": 2,
+          "total": 15,
+          "missing_rate": 0.133
+        },
+        {
+          "key": "mechanical_index",
+          "label": "机械指数",
+          "tier": 1,
+          "missing": 14,
+          "total": 15,
+          "missing_rate": 0.933
+        },
+        {
+          "key": "intensity",
+          "label": "声强",
+          "tier": 1,
+          "missing": 2,
+          "total": 15,
+          "missing_rate": 0.133
+        },
+        {
+          "key": "pulse_duration",
+          "label": "脉冲宽度",
+          "tier": 1,
+          "missing": 15,
+          "total": 15,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "duty_cycle",
+          "label": "占空比",
+          "tier": 1,
+          "missing": 14,
+          "total": 15,
+          "missing_rate": 0.933
+        },
+        {
+          "key": "temperature_rise",
+          "label": "温升",
+          "tier": 1,
+          "missing": 12,
+          "total": 15,
+          "missing_rate": 0.8
+        },
+        {
+          "key": "transducer_geometry",
+          "label": "换能器几何",
+          "tier": 2,
+          "missing": 15,
+          "total": 15,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "skull_attenuation",
+          "label": "颅骨衰减",
+          "tier": 2,
+          "missing": 15,
+          "total": 15,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "target_pressure",
+          "label": "靶区声压",
+          "tier": 3,
+          "missing": 15,
+          "total": 15,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "target_temperature",
+          "label": "靶区温度",
+          "tier": 3,
+          "missing": 15,
+          "total": 15,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "tissue_acoustics",
+          "label": "组织声学参数",
+          "tier": 3,
+          "missing": 15,
+          "total": 15,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "anatomy_source",
+          "label": "解剖来源",
+          "tier": 4,
+          "missing": 15,
+          "total": 15,
+          "missing_rate": 1.0
+        }
+      ],
+      "verdict_distribution": {
+        "not_reproducible": 15
+      },
+      "mean_completeness": 0.127
+    },
+    "mechanical loading": {
+      "n": 15,
+      "field_missing": [
+        {
+          "key": "strain_or_shear",
+          "label": "应变/剪切应力",
+          "tier": 1,
+          "missing": 7,
+          "total": 15,
+          "missing_rate": 0.467
+        },
+        {
+          "key": "frequency",
+          "label": "加载频率",
+          "tier": 1,
+          "missing": 7,
+          "total": 15,
+          "missing_rate": 0.467
+        },
+        {
+          "key": "session_duration",
+          "label": "单次时长",
+          "tier": 1,
+          "missing": 7,
+          "total": 15,
+          "missing_rate": 0.467
+        },
+        {
+          "key": "substrate_stiffness",
+          "label": "基质刚度",
+          "tier": 1,
+          "missing": 13,
+          "total": 15,
+          "missing_rate": 0.867
+        },
+        {
+          "key": "loading_waveform",
+          "label": "加载波形",
+          "tier": 2,
+          "missing": 15,
+          "total": 15,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "contact_geometry",
+          "label": "接触几何",
+          "tier": 2,
+          "missing": 15,
+          "total": 15,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "target_strain",
+          "label": "靶区实际应变",
+          "tier": 3,
+          "missing": 15,
+          "total": 15,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "tissue_viscoelasticity",
+          "label": "组织粘弹性参数",
+          "tier": 3,
+          "missing": 15,
+          "total": 15,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "anatomy_source",
+          "label": "解剖来源",
+          "tier": 4,
+          "missing": 15,
+          "total": 15,
+          "missing_rate": 1.0
+        }
+      ],
+      "verdict_distribution": {
+        "not_reproducible": 13,
+        "underdetermined": 2
+      },
+      "mean_completeness": 0.173
+    },
+    "metabolic / microbiota": {
+      "n": 18,
+      "field_missing": [
+        {
+          "key": "exposure_amount",
+          "label": "摄入/暴露量",
+          "tier": 1,
+          "missing": 14,
+          "total": 18,
+          "missing_rate": 0.778
+        },
+        {
+          "key": "exposure_duration",
+          "label": "暴露时长",
+          "tier": 1,
+          "missing": 18,
+          "total": 18,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "compound_identity",
+          "label": "化合物/菌株身份",
+          "tier": 2,
+          "missing": 18,
+          "total": 18,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "target_concentration",
+          "label": "靶部位浓度",
+          "tier": 3,
+          "missing": 18,
+          "total": 18,
+          "missing_rate": 1.0
+        }
+      ],
+      "verdict_distribution": {
+        "not_reproducible": 18
+      },
+      "mean_completeness": 0.033
+    },
+    "photobiomodulation": {
+      "n": 37,
+      "field_missing": [
+        {
+          "key": "wavelength",
+          "label": "波长",
+          "tier": 1,
+          "missing": 18,
+          "total": 37,
+          "missing_rate": 0.486
+        },
+        {
+          "key": "power_density",
+          "label": "辐照度/功率密度",
+          "tier": 1,
+          "missing": 32,
+          "total": 37,
+          "missing_rate": 0.865
+        },
+        {
+          "key": "fluence",
+          "label": "能量密度",
+          "tier": 1,
+          "missing": 16,
+          "total": 37,
+          "missing_rate": 0.432
+        },
+        {
+          "key": "exposure_time",
+          "label": "照射时长",
+          "tier": 1,
+          "missing": 16,
+          "total": 37,
+          "missing_rate": 0.432
+        },
+        {
+          "key": "spot_area",
+          "label": "光斑面积",
+          "tier": 1,
+          "missing": 34,
+          "total": 37,
+          "missing_rate": 0.919
+        },
+        {
+          "key": "applicator_distance",
+          "label": "施加器-皮肤距离",
+          "tier": 2,
+          "missing": 37,
+          "total": 37,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "applicator_angle",
+          "label": "入射角",
+          "tier": 2,
+          "missing": 37,
+          "total": 37,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "beam_profile",
+          "label": "光束分布",
+          "tier": 2,
+          "missing": 37,
+          "total": 37,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "target_fluence",
+          "label": "靶区实际光通量",
+          "tier": 3,
+          "missing": 37,
+          "total": 37,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "target_depth",
+          "label": "靶区深度",
+          "tier": 3,
+          "missing": 37,
+          "total": 37,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "tissue_optics",
+          "label": "组织光学参数",
+          "tier": 3,
+          "missing": 37,
+          "total": 37,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "anatomy_source",
+          "label": "解剖来源",
+          "tier": 4,
+          "missing": 37,
+          "total": 37,
+          "missing_rate": 1.0
+        }
+      ],
+      "verdict_distribution": {
+        "not_reproducible": 35,
+        "underdetermined": 2
+      },
+      "mean_completeness": 0.146
+    },
+    "vagus nerve stimulation": {
+      "n": 18,
+      "field_missing": [
+        {
+          "key": "frequency",
+          "label": "频率",
+          "tier": 1,
+          "missing": 13,
+          "total": 18,
+          "missing_rate": 0.722
+        },
+        {
+          "key": "pulse_width",
+          "label": "脉宽",
+          "tier": 1,
+          "missing": 16,
+          "total": 18,
+          "missing_rate": 0.889
+        },
+        {
+          "key": "current",
+          "label": "电流强度",
+          "tier": 1,
+          "missing": 13,
+          "total": 18,
+          "missing_rate": 0.722
+        },
+        {
+          "key": "session_duration",
+          "label": "单次时长",
+          "tier": 1,
+          "missing": 13,
+          "total": 18,
+          "missing_rate": 0.722
+        },
+        {
+          "key": "site",
+          "label": "刺激部位",
+          "tier": 1,
+          "missing": 18,
+          "total": 18,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "electrode_geometry",
+          "label": "电极几何/触点配置",
+          "tier": 2,
+          "missing": 18,
+          "total": 18,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "fascicle_target",
+          "label": "靶纤维束",
+          "tier": 2,
+          "missing": 18,
+          "total": 18,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "impedance",
+          "label": "接口阻抗",
+          "tier": 2,
+          "missing": 18,
+          "total": 18,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "neural_dose",
+          "label": "神经剂量(ECAP归一化)",
+          "tier": 3,
+          "missing": 18,
+          "total": 18,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "target_organ_engagement",
+          "label": "靶器官接 engagement",
+          "tier": 3,
+          "missing": 18,
+          "total": 18,
+          "missing_rate": 1.0
+        },
+        {
+          "key": "anatomy_source",
+          "label": "解剖来源",
+          "tier": 4,
+          "missing": 18,
+          "total": 18,
+          "missing_rate": 1.0
+        }
+      ],
+      "verdict_distribution": {
+        "not_reproducible": 18
+      },
+      "mean_completeness": 0.069
+    }
+  },
+  "field_missing_rate": [
+    {
+      "key": "pulse_duration",
+      "missing": 15,
+      "total": 15,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "transducer_geometry",
+      "missing": 15,
+      "total": 15,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "skull_attenuation",
+      "missing": 15,
+      "total": 15,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "target_pressure",
+      "missing": 15,
+      "total": 15,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "target_temperature",
+      "missing": 15,
+      "total": 15,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "tissue_acoustics",
+      "missing": 15,
+      "total": 15,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "anatomy_source",
+      "missing": 85,
+      "total": 85,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "loading_waveform",
+      "missing": 15,
+      "total": 15,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "contact_geometry",
+      "missing": 15,
+      "total": 15,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "target_strain",
+      "missing": 15,
+      "total": 15,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "tissue_viscoelasticity",
+      "missing": 15,
+      "total": 15,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "applicator_distance",
+      "missing": 37,
+      "total": 37,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "applicator_angle",
+      "missing": 37,
+      "total": 37,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "beam_profile",
+      "missing": 37,
+      "total": 37,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "target_fluence",
+      "missing": 37,
+      "total": 37,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "target_depth",
+      "missing": 37,
+      "total": 37,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "tissue_optics",
+      "missing": 37,
+      "total": 37,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "site",
+      "missing": 18,
+      "total": 18,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "electrode_geometry",
+      "missing": 18,
+      "total": 18,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "fascicle_target",
+      "missing": 18,
+      "total": 18,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "impedance",
+      "missing": 18,
+      "total": 18,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "neural_dose",
+      "missing": 18,
+      "total": 18,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "target_organ_engagement",
+      "missing": 18,
+      "total": 18,
+      "missing_rate": 1.0
+    },
+    {
+      "key": "mechanical_index",
+      "missing": 14,
+      "total": 15,
+      "missing_rate": 0.933
+    },
+    {
+      "key": "duty_cycle",
+      "missing": 14,
+      "total": 15,
+      "missing_rate": 0.933
+    },
+    {
+      "key": "spot_area",
+      "missing": 34,
+      "total": 37,
+      "missing_rate": 0.919
+    },
+    {
+      "key": "pulse_width",
+      "missing": 16,
+      "total": 18,
+      "missing_rate": 0.889
+    },
+    {
+      "key": "substrate_stiffness",
+      "missing": 13,
+      "total": 15,
+      "missing_rate": 0.867
+    },
+    {
+      "key": "power_density",
+      "missing": 32,
+      "total": 37,
+      "missing_rate": 0.865
+    },
+    {
+      "key": "temperature_rise",
+      "missing": 12,
+      "total": 15,
+      "missing_rate": 0.8
+    },
+    {
+      "key": "current",
+      "missing": 13,
+      "total": 18,
+      "missing_rate": 0.722
+    },
+    {
+      "key": "session_duration",
+      "missing": 20,
+      "total": 33,
+      "missing_rate": 0.606
+    },
+    {
+      "key": "wavelength",
+      "missing": 18,
+      "total": 37,
+      "missing_rate": 0.486
+    },
+    {
+      "key": "strain_or_shear",
+      "missing": 7,
+      "total": 15,
+      "missing_rate": 0.467
+    },
+    {
+      "key": "frequency",
+      "missing": 22,
+      "total": 48,
+      "missing_rate": 0.458
+    },
+    {
+      "key": "fluence",
+      "missing": 16,
+      "total": 37,
+      "missing_rate": 0.432
+    },
+    {
+      "key": "exposure_time",
+      "missing": 16,
+      "total": 37,
+      "missing_rate": 0.432
+    },
+    {
+      "key": "intensity",
+      "missing": 2,
+      "total": 15,
+      "missing_rate": 0.133
+    }
+  ],
+  "overall": {
+    "verdict_distribution": {
+      "not_reproducible": 99,
+      "underdetermined": 4
+    },
+    "mean_completeness": 0.114,
+    "max_completeness": 0.4
+  }
+}
