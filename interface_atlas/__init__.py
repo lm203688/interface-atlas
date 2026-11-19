@@ -18,11 +18,14 @@
   dose_features —— L3 供给：三模态多指标剂量场特征（拒绝单一标量）
   l3bench      —— L3 剂量-效应种子基准：三层断裂 + 多指标 + 可证伪
   l3_validation —— L2 个体化 + L3 基准的独立验证
+  service      —— 产品化服务层：CLI / Web API / MCP 三入口共享内核（v1.0）
+  webapp       —— 零依赖本地 Web 服务（REST API + 交互站，仅 127.0.0.1）
+  mcp_server   —— MCP 服务：判定内核以 MCP 工具形式暴露给 AI 代理
 
 MIT License.
 """
 
-__version__ = "0.9.0"
+__version__ = "1.0.0"
 
 from . import calibration, dosimetry, light_field, mc_light, paramcheck  # noqa: F401
 from . import ultrasound_field, us_validation  # noqa: F401
