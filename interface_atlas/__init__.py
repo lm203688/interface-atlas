@@ -14,12 +14,17 @@
   us_validation —— L2 超声独立验证：RS 积分交叉核对 + 代理误差如实报告
   electric_field —— L2 电/tES-tDCS 剂量场：四球解析解 + 靶区电场 + 逆设计
   es_validation —— L2 电场独立验证：单层球谐 vs 解析闭式 + 可证伪性质
+  anatomy      —— L2 个体化解剖：头模数据契约 + 代理体模 + 导入适配器 + 许可门禁
+  dose_features —— L3 供给：三模态多指标剂量场特征（拒绝单一标量）
+  l3bench      —— L3 剂量-效应种子基准：三层断裂 + 多指标 + 可证伪
+  l3_validation —— L2 个体化 + L3 基准的独立验证
 
 MIT License.
 """
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 
 from . import calibration, dosimetry, light_field, mc_light, paramcheck  # noqa: F401
 from . import ultrasound_field, us_validation  # noqa: F401
 from . import electric_field, es_validation  # noqa: F401
+from . import anatomy, dose_features, l3bench, l3_validation  # noqa: F401
