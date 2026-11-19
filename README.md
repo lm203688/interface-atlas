@@ -19,6 +19,8 @@
 | `calibration` | 剂量点估计的偏差校正 + 可信区间 | split conformal prediction（三段分离，有限样本覆盖保证） | 去偏点估计、(1−α) 覆盖区间、可证伪的覆盖率/反证报告 |
 | `ultrasound_field` | 换能器参数 + 颅骨衰减 → 靶区声压剂量（超声模态） | 线性声学降阶代理（聚焦增益 + 分层衰减 + p²/2ρc） | 焦点峰值声压、Isppa、MI、温升粗估、硬阈值核对、闭式逆设计 |
 | `us_validation` | 超声剂量场的独立校验（不同实现路径） | 数值 RS 求积 vs 解析闭式 + 量级/线性/阈值同源 | 可证伪验证报告、代理误差如实标注（聚焦增益无闭式→surrogate） |
+| `electric_field` | 电流 + 电极 → 靶区电场剂量（电模态） | 四层同心球准静态球谐解析解（Rush-Driscoll 基准） | 靶区 E(V/m)、闭式逆设计、实践窗口 advisory 标注（非监管硬线） |
+| `es_validation` | 电场剂量场的独立校验 | 单层球谐矩阵解 vs 级数求和闭式 + 可证伪性质 | 7 项验证门报告、近场截断单列 report、电导率缩放反比性 |
 
 > **v0.4 战略转向**：项目从「证据审计工具」升级为「物理干预剂量学操作系统」的 L1 层。放疗靠 ICRU 报告标准 + DICOM-RT + TPS 成为精确医学；物理干预仍缺这一层。详见 [`DOSE_REPORTING_SPEC.md`](DOSE_REPORTING_SPEC.md) 与项目战略文档。`paramcheck`（判决）与 `dosimetry`（完整性诊断）正交并存，前者不放宽。
 >
@@ -27,6 +29,8 @@
 > **v0.6 L2 中阶——从点估计到可信区间**：实测发现 P1 相对 MC 的偏差 `r≈1.15` 是稳定的系统偏差（随机噪声仅 ~2%，无参数曲面可拟合），故用 split conformal 给剂量预测配**有限样本有效的覆盖区间**：真实 μeff 以 ≥1−α 概率落入区间。这是领域里少见的「剂量报告带置信度」。详见 [`CALIBRATION.md`](CALIBRATION.md)。
 >
 > **v0.7 L2 扩到超声/tFUS**：把光模态范式迁移到超声——换能器几何 + 颅骨衰减 → 靶区声压/MI/Isppa/温升，MI≤1.9 与温升≤2°C 阈值和 `paramcheck` 单一真源。焦点声压随颅骨厚度 2→8mm 变化 2.37×，定量复现「设备参数 ≠ 靶区剂量」。独立验证用数值 RS 求积交叉核对、把无独立闭式的聚焦增益如实标为 surrogate。详见 [`L2_ULTRASOUND.md`](L2_ULTRASOUND.md)。
+>
+> **v0.8 L2 三模态统一——电/tES-tDCS**：四层同心球准静态球谐解析解（Rush-Driscoll 1969 标准基准），电流 + 分层电导率 → 靶区电场 E(V/m) + 闭式逆设计。1mA → 皮层 0.20 V/m（文献锚点）；颅骨电导率变异 → 场强差 3.15×（对应 HCP 群体头模 2.1× 个体差异）。**诚实处理**：tES 无 FDA 硬阈值，2mA 只标 advisory 不冒充监管线；同心球无法定义「入脑比例」故不编造该数字。详见 [`L2_ELECTRIC.md`](L2_ELECTRIC.md)。
 
 ## 安装与快速开始
 
@@ -84,6 +88,11 @@ python -m interface_atlas.cli usfield --preset tfus_deep --intensity 1.0 --skull
 python -m interface_atlas.cli usfield --preset tfus_transcranial --inverse 0.5 --skull skull_thin
 python -m interface_atlas.cli usbench --which skull   # 颅骨厚度敏感性
 python -m interface_atlas.cli usbench --which all     # 独立验证全套
+
+# L2 电/tES-tDCS 剂量场（v0.8）
+python -m interface_atlas.cli esfield --preset 4sphere --current 1.0
+python -m interface_atlas.cli esfield --inverse 0.3
+python -m interface_atlas.cli esbench --which all
 ```
 
 `data/receptor_expression.csv` 与 `data/evidence_matrix.csv` 已随仓库提供，不下载原始 zip 也能查询；`--rebuild` 才需要原始 zip。
