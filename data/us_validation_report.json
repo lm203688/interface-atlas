@@ -1,0 +1,197 @@
+{
+  "version": "L2-ultrasound-alpha",
+  "overall_passed": true,
+  "gated_checks": [
+    "axis_rs_integral",
+    "intensity_pressure_roundtrip",
+    "mi_and_thresholds",
+    "skull_attenuation",
+    "temperature_scaling"
+  ],
+  "surrogate_checks": [
+    "focus_gain_surrogate"
+  ],
+  "checks": {
+    "axis_rs_integral": {
+      "passed": true,
+      "criterion": "RMS<0.01 & max_abs_diff<0.02 (both normalized to max)",
+      "method": "Rayleigh-Sommerfeld axial integral: numpy trapz vs variable-substitution closed form",
+      "frequency_mhz": 1.0,
+      "aperture_radius_cm": 1.0,
+      "wavelength_cm": 0.148,
+      "z_range_cm": [
+        2.0,
+        15.0
+      ],
+      "n_z": 120,
+      "n_r_per_point": 200000,
+      "rms_diff": 0.0,
+      "max_abs_diff": 0.0,
+      "samples": [
+        {
+          "z_cm": 2.0,
+          "closed_norm": 0.95576,
+          "numeric_norm": 0.95576
+        },
+        {
+          "z_cm": 3.8571,
+          "closed_norm": 0.42114,
+          "numeric_norm": 0.42114
+        },
+        {
+          "z_cm": 5.7143,
+          "closed_norm": 0.9631,
+          "numeric_norm": 0.9631
+        },
+        {
+          "z_cm": 7.5714,
+          "closed_norm": 0.98473,
+          "numeric_norm": 0.98473
+        },
+        {
+          "z_cm": 9.4286,
+          "closed_norm": 0.90121,
+          "numeric_norm": 0.90121
+        },
+        {
+          "z_cm": 11.2857,
+          "closed_norm": 0.80674,
+          "numeric_norm": 0.80674
+        },
+        {
+          "z_cm": 13.1429,
+          "closed_norm": 0.7218,
+          "numeric_norm": 0.7218
+        },
+        {
+          "z_cm": 15.0,
+          "closed_norm": 0.6494,
+          "numeric_norm": 0.6494
+        }
+      ],
+      "source": "Rayleigh-Sommerfeld first integral; variable substitution r·dr=R·dR is exact"
+    },
+    "intensity_pressure_roundtrip": {
+      "cases": [
+        {
+          "medium": "water",
+          "rho": 1000.0,
+          "c": 1480.0,
+          "I_in_w_cm2": 0.5,
+          "p_pk_mpa": 0.121655,
+          "I_back_w_cm2": 0.5,
+          "rel_error": 0.0
+        },
+        {
+          "medium": "water",
+          "rho": 1000.0,
+          "c": 1480.0,
+          "I_in_w_cm2": 5.0,
+          "p_pk_mpa": 0.384708,
+          "I_back_w_cm2": 5.0,
+          "rel_error": 0.0
+        },
+        {
+          "medium": "water",
+          "rho": 1000.0,
+          "c": 1480.0,
+          "I_in_w_cm2": 15.0,
+          "p_pk_mpa": 0.666333,
+          "I_back_w_cm2": 15.0,
+          "rel_error": 2.3684757858670006e-16
+        },
+        {
+          "medium": "brain",
+          "rho": 1040.0,
+          "c": 1560.0,
+          "I_in_w_cm2": 0.5,
+          "p_pk_mpa": 0.127373,
+          "I_back_w_cm2": 0.5,
+          "rel_error": 0.0
+        },
+        {
+          "medium": "brain",
+          "rho": 1040.0,
+          "c": 1560.0,
+          "I_in_w_cm2": 5.0,
+          "p_pk_mpa": 0.40279,
+          "I_back_w_cm2": 5.0,
+          "rel_error": 1.7763568394002506e-16
+        },
+        {
+          "medium": "brain",
+          "rho": 1040.0,
+          "c": 1560.0,
+          "I_in_w_cm2": 15.0,
+          "p_pk_mpa": 0.697653,
+          "I_back_w_cm2": 15.0,
+          "rel_error": 2.3684757858670006e-16
+        }
+      ],
+      "worst_rel_error": 2.3684757858670006e-16,
+      "passed": true,
+      "note": "1 MPa 峰值声压对应 I≈p²/(2ρc)；水/脑两个介质往返一致"
+    },
+    "mi_and_thresholds": {
+      "MI_1MPa_1MHz": 1.0,
+      "MI_1MPa_4MHz": 0.5,
+      "inverse_sqrt_frequency_holds": true,
+      "engine_mi_limit": 1.9,
+      "paramcheck_mi_limit": 1.9,
+      "engine_temp_limit_c": 2.0,
+      "paramcheck_temp_limit_c": 2.0,
+      "thresholds_single_source": true,
+      "passed": true,
+      "source": "AIUM/FDA MI=p[MPa]/√f[MHz]; thresholds from paramcheck.HARD_LIMITS/TEMP_LIMIT"
+    },
+    "skull_attenuation": {
+      "cases": [
+        {
+          "preset": "skull_thin",
+          "thickness_cm": 0.4,
+          "alpha_db_cm_at_1mhz": 22.0,
+          "alpha_db_cm_at_0p5mhz": 11.0,
+          "attenuation_db": 4.4,
+          "transmission": 0.60256
+        },
+        {
+          "preset": "skull_thick",
+          "thickness_cm": 0.8,
+          "alpha_db_cm_at_1mhz": 25.0,
+          "alpha_db_cm_at_0p5mhz": 12.5,
+          "attenuation_db": 10.0,
+          "transmission": 0.31623
+        }
+      ],
+      "expected_range_db": [
+        2.0,
+        15.0
+      ],
+      "all_in_expected_range": true,
+      "monotone_in_thickness": true,
+      "passed": true,
+      "note": "单程 0.5MHz 经 4-8mm 颅骨；文献经颅总衰减常报 10-20dB（含往返/散射），本模型单程量级一致"
+    },
+    "temperature_scaling": {
+      "base_delta_t_c": 0.002528,
+      "checks": {
+        "linear_in_intensity": true,
+        "linear_in_duty_cycle": true,
+        "linear_in_duration": true
+      },
+      "passed": true,
+      "note": "ΔT=μa·I·t/(ρc) 线性；非临床结论，仅验证粗估模型的自洽性"
+    },
+    "focus_gain_surrogate": {
+      "role": "measure surrogate only (no independent closed form; NOT a pass/fail gate)",
+      "gains_at_lambda": {
+        "tfus_transcranial": 89.824,
+        "tfus_superficial": 7.886,
+        "tfus_deep": 168.711
+      },
+      "monotone_in_aperture": true,
+      "interpretation": "G=η(πa·sinα/λ)² 是衍射受限几何近似，忽略像差/旁瓣/非线性；真实换能器焦点增益须用实测声场或全波仿真标定，本值仅作量级参考"
+    }
+  },
+  "disclaimer": "L2 超声剂量场引擎是线性声学降阶模型，非临床处方或治疗计划系统；不含非线性/空化/辐射力，颅骨为均匀衰减层，温升为粗估上界。绝对剂量依赖换能器与组织声学参数的真实值，需独立声场测量/热模型复核。"
+}
