@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>interface-atlas · 物理干预剂量学工作台</title>
+<style>
+  :root {
+    --primary: #16365C; --primary-mid: #4A6E96; --primary-light: #E8EEF5;
+    --accent: #B07C1F; --red: #A33A2A; --green: #2E6B4F;
+    --text: #1F2937; --gray: #5B6672; --line: #D6DDE5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "MiSans", "Microsoft YaHei", sans-serif; color: var(--text); background: #F7F9FB; }
+  header { background: var(--primary); color: #fff; padding: 20px 32px; }
+  header h1 { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
+  header p { font-size: 12px; color: #9FB4CC; margin-top: 6px; line-height: 1.6; }
+  header .meta { font-size: 11px; color: #7E97B5; margin-top: 4px; }
+  main { max-width: 1080px; margin: 0 auto; padding: 24px 32px 48px; }
+  nav { display: flex; gap: 4px; border-bottom: 2px solid var(--line); margin-bottom: 20px; flex-wrap: wrap; }
+  nav button {
+    border: none; background: none; padding: 10px 16px; font-size: 14px; cursor: pointer;
+    color: var(--gray); border-bottom: 3px solid transparent; margin-bottom: -2px; font-family: inherit;
+  }
+  nav button.active { color: var(--primary); font-weight: 700; border-bottom-color: var(--primary); }
+  section { display: none; }
+  section.active { display: block; }
+  .panel { background: #fff; border: 1px solid var(--line); padding: 20px; margin-bottom: 16px; }
+  label { display: block; font-size: 13px; color: var(--gray); margin: 10px 0 4px; }
+  input[type=text], textarea, select {
+    width: 100%; padding: 9px 10px; border: 1px solid var(--line); font-size: 14px;
+    font-family: inherit; border-radius: 2px;
+  }
+  textarea { min-height: 64px; resize: vertical; }
+  .row { display: flex; gap: 12px; }
+  .row > div { flex: 1; }
+  button.go {
+    background: var(--primary); color: #fff; border: none; padding: 10px 28px;
+    font-size: 14px; cursor: pointer; margin-top: 14px; border-radius: 2px; font-family: inherit;
+  }
+  button.go:hover { background: var(--primary-mid); }
+  .out { background: #FBFCFE; border: 1px solid var(--line); padding: 16px; font-size: 13px;
+         white-space: pre-wrap; word-break: break-all; max-height: 480px; overflow: auto; line-height: 1.55; }
+  .verdict { font-size: 22px; font-weight: 800; padding: 10px 16px; display: inline-block; margin-bottom: 10px; }
+  .v-SUPPORTED { color: #fff; background: var(--green); }
+  .v-REFUTED { color: #fff; background: var(--red); }
+  .v-EXCEEDED { color: #fff; background: var(--accent); }
+  .v-NO_EVIDENCE { color: #fff; background: var(--gray); }
+  .hint { font-size: 12px; color: var(--gray); line-height: 1.6; margin-top: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { background: var(--primary); color: #fff; padding: 7px 8px; text-align: left; font-weight: 600; }
+  td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  footer { max-width: 1080px; margin: 0 auto; padding: 0 32px 32px; font-size: 11px; color: var(--gray); line-height: 1.7; }
+  .err { color: var(--red); }
+</style>
+</head>
+<body>
+<header>
+  <h1>interface-atlas · 物理干预剂量学工作台</h1>
+  <p>宣称判定 → 证据锚定 → 剂量完整性 → 靶区剂量 → 基准口径，五步旅程一站跑通</p>
+  <div class="meta" id="meta">正在连接服务…</div>
+</header>
+<main>
+  <nav id="tabs">
+    <button data-tab="claim" class="active">① 宣称判定</button>
+    <button data-tab="evidence">② 证据库</button>
+    <button data-tab="paramcheck">③ 参数预检</button>
+    <button data-tab="doseaudit">④ 剂量审计</button>
+    <button data-tab="dosefield">⑤ 剂量场</button>
+    <button data-tab="l3">⑥ L3 基准</button>
+  </nav>
+
+  <section id="tab-claim" class="active">
+    <div class="panel">
+      <label>一句宣称（例：红光面板能抗衰老延寿 / 植入式迷走刺激能治疗类风湿关节炎 / 特定频率电磁波修复细胞）</label>
+      <textarea id="claim-text">红光面板能抗衰老延寿</textarea>
+      <button class="go" onclick="doClaim()">判定</button>
+      <p class="hint">四级判定：SUPPORTED 支持 / REFUTED 反驳 / EXCEEDED 超出证据 / NO_EVIDENCE 无证据。每条判定带命中证据 ID、推翻条件与证据库指纹。</p>
+    </div>
+    <div class="out" id="claim-out">结果将显示在这里。</div>
+  </section>
+
+  <section id="tab-evidence">
+    <div class="panel">
+      <div class="row">
+        <div><label>模态</label><select id="ev-modality"><option value="">全部</option>
+          <option>photobiomodulation</option><option>vagus</option>
+          <option>focused ultrasound</option><option>mechanical</option><option>metabolic</option></select></div>
+        <div><label>最低等级</label><select id="ev-grade"><option value="">全部</option><option>A</option><option>B</option><option>C</option></select></div>
+        <div><label>关键词</label><input type="text" id="ev-keyword" placeholder="如 rheumatoid / GLP-1"></div>
+      </div>
+      <button class="go" onclick="doEvidence()">查询</button>
+    </div>
+    <div class="out" id="ev-out">结果将显示在这里。</div>
+  </section>
+
+  <section id="tab-paramcheck">
+    <div class="panel">
+      <label>模态</label>
+      <select id="pc-modality">
+        <option value="photobiomodulation">光生物调节 photobiomodulation</option>
+        <option value="focused ultrasound">聚焦超声 focused ultrasound</option>
+        <option value="vagus nerve stimulation">迷走刺激 vagus nerve stimulation</option>
+        <option value="mechanical loading">机械载荷 mechanical loading</option>
+      </select>
+      <label>参数（每行一个 key=value）</label>
+      <textarea id="pc-params">wavelength=660nm
+power_density=25mW/cm2
+fluence=6J/cm2
+exposure_time=240s</textarea>
+      <button class="go" onclick="doParamcheck()">预检</button>
+      <p class="hint">五级判决：COMPLETE / PARTIAL / INSUFFICIENT / OUT_OF_WINDOW（越硬阈值）/ NO_EVIDENCE。</p>
+    </div>
+    <div class="out" id="pc-out">结果将显示在这里。</div>
+  </section>
+
+  <section id="tab-doseaudit">
+    <div class="panel">
+      <label>剂量报告字段（每行一个 key=value，将按规范 v1 四层本体审计）</label>
+      <textarea id="da-params">wavelength=660nm
+power_density=25mW/cm2
+fluence=6J/cm2
+exposure_time=240s
+applicator_distance=2cm
+applicator_angle=90deg</textarea>
+      <button class="go" onclick="doDoseaudit()">审计</button>
+      <p class="hint">输出 completeness_score 与可复现性四档：not_reproducible → underdetermined → reproducible_with_model → reproducible_from_report。</p>
+    </div>
+    <div class="out" id="da-out">结果将显示在这里。</div>
+  </section>
+
+  <section id="tab-dosefield">
+    <div class="panel">
+      <div class="row">
+        <div><label>模态</label><select id="df-modality" onchange="dfHint()">
+          <option value="light">光 P1 扩散</option>
+          <option value="ultrasound">超声聚焦 + 颅骨</option>
+          <option value="electric">电场四层球谐</option></select></div>
+        <div><label>预设</label><select id="df-preset"></select></div>
+        <div><label>靶区深度 cm</label><input type="text" id="df-depth" value="1.0"></div>
+      </div>
+      <button class="go" onclick="doDosefield()">计算靶区剂量</button>
+      <p class="hint" id="df-hint"></p>
+    </div>
+    <div class="out" id="df-out">结果将显示在这里。</div>
+  </section>
+
+  <section id="tab-l3">
+    <div class="panel">
+      <button class="go" onclick="doL3()">载入 L3 种子基准案例</button>
+      <p class="hint">4 个一手案例，每条带可证伪推翻条件；评测协议多指标、拒绝聚合总分。</p>
+    </div>
+    <div class="out" id="l3-out">结果将显示在这里。</div>
+  </section>
+</main>
+<footer>
+  边界声明：科研降阶模型与社区草案规范，非临床处方、非监管结论、不构成医疗建议。自发报告≠发生率；RNA≠膜蛋白；设备参数≠靶区剂量。
+</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+
+/* 标签页 */
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('main section').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  $('tab-' + b.dataset.tab).classList.add('active');
+});
+
+/* 元信息 */
+fetch('/api/meta').then(r => r.json()).then(d => {
+  $('meta').textContent = `${d.library} v${d.version} · 证据指纹 ${d.evidence_fingerprint.slice(0,12)}… · 证据 ${d.evidence_count} 条`;
+}).catch(() => { $('meta').textContent = '服务未连接'; });
+
+const PRESETS = {
+  light: ['skin_nir', 'fat_nir', 'muscle_nir'],
+  ultrasound: ['tfus_transcranial', 'tfus_superficial', 'tfus_deep'],
+  electric: ['4sphere', 'uniform'],
+};
+const HINTS = {
+  light: 'P1 稳态扩散近似（Farrell 1992 偶极子），输出相对光通量场；适用域外会自动告警。',
+  ultrasound: '线性声学降阶代理：聚焦增益 + 分层衰减 + p²/2ρc；MI≤1.9 与温升≤2°C 为硬阈值。',
+  electric: '四层同心球准静态球谐解析解（Rush-Driscoll 基准）；tES 无 FDA 硬阈值，2mA 仅为 advisory。',
+};
+function dfHint() {
+  const m = $('df-modality').value;
+  $('df-preset').innerHTML = PRESETS[m].map(p => `<option>${p}</option>`).join('');
+  $('df-hint').textContent = HINTS[m];
+}
+dfHint();
+
+async function post(url, body) {
+  const r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  return r.json();
+}
+function kv(text) {
+  const o = {};
+  text.split('\n').map(l => l.trim()).filter(Boolean).forEach(l => {
+    const i = l.indexOf('='); if (i > 0) o[l.slice(0, i).trim()] = l.slice(i + 1).trim();
+  });
+  return o;
+}
+function show(el, data) { $(el).textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2); }
+
+async function doClaim() {
+  show('claim-out', '判定中…');
+  const d = await post('/api/claim', {text: $('claim-text').value});
+  const v = d.result?.verdict || '';
+  const cls = {SUPPORTED:'v-SUPPORTED', REFUTED:'v-REFUTED', EXCEEDED:'v-EXCEEDED', NO_EVIDENCE:'v-NO_EVIDENCE'}[v] || '';
+  $('claim-out').innerHTML =
+    `<span class="verdict ${cls}">${v || 'ERROR'}</span>\n` +
+    `<strong>理由</strong>：${d.result?.reason || d.error || ''}\n\n` +
+    `<strong>命中证据</strong>：${(d.result?.matched_ids || []).join(', ') || '无'}\n` +
+    `<strong>反证证据</strong>：${(d.result?.counter_ids || []).join(', ') || '无'}\n` +
+    `<strong>推翻条件</strong>：${d.result?.falsification || '—'}\n` +
+    `<strong>证据指纹</strong>：${d.result?.evidence_fingerprint || d.meta?.evidence_fingerprint || '—'}\n\n` +
+    `边界：${d.meta?.boundary || ''}`;
+}
+
+async function doEvidence() {
+  show('ev-out', '查询中…');
+  const q = new URLSearchParams();
+  if ($('ev-modality').value) q.set('modality', $('ev-modality').value);
+  if ($('ev-grade').value) q.set('grade_min', $('ev-grade').value);
+  if ($('ev-keyword').value) q.set('keyword', $('ev-keyword').value);
+  const d = await (await fetch('/api/evidence?' + q)).json();
+  const rows = d.result?.rows || [];
+  if (!rows.length) { show('ev-out', '无匹配记录。'); return; }
+  const head = '<tr><th>ID</th><th>模态</th><th>细胞/对象</th><th>终点</th><th>等级</th><th>来源</th></tr>';
+  const body = rows.map(r => `<tr><td>${r.id||''}</td><td>${r.modality||''}</td><td>${r.cell_type||''}</td><td>${(r.endpoint||'').slice(0,60)}</td><td>${r.evidence_grade||''}</td><td>${(r.source_url||'').slice(0,50)}</td></tr>`).join('');
+  $('ev-out').innerHTML = `<p style="margin-bottom:8px">共 ${d.result.count} 条，显示 ${rows.length} 条。</p><table>${head}${body}</table>`;
+}
+
+async function doParamcheck() {
+  show('pc-out', '预检中…');
+  const payload = Object.assign({modality: $('pc-modality').value}, kv($('pc-params').value));
+  show('pc-out', await post('/api/paramcheck', {payload}));
+}
+async function doDoseaudit() {
+  show('da-out', '审计中…');
+  const payload = Object.assign({modality: 'photobiomodulation'}, kv($('da-params').value));
+  show('da-out', await post('/api/doseaudit', {payload}));
+}
+async function doDosefield() {
+  show('df-out', '计算中…');
+  const m = $('df-modality').value;
+  const params = {preset: $('df-preset').value, target_depth_cm: parseFloat($('df-depth').value)};
+  show('df-out', await post('/api/dosefield', {modality: m, params}));
+}
+async function doL3() {
+  show('l3-out', '载入中…');
+  const d = await (await fetch('/api/l3cases')).json();
+  const cases = d.result?.cases || [];
+  $('l3-out').innerHTML = cases.map(c =>
+    `<p style="margin-bottom:10px"><strong>${c.case_id}</strong>（${c.modality}）<br>` +
+    `剂量锚点：${c.dose_anchor || '—'}<br>效应发现：${c.effect_observation || '—'}<br>` +
+    `推翻条件：${c.falsifier || '—'}</p>`).join('') +
+    `<p style="color:#5B6672">${d.result?.protocol_note || ''}</p>`;
+}
+</script>
+</body>
+</html>
