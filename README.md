@@ -21,6 +21,9 @@
 | `us_validation` | 超声剂量场的独立校验（不同实现路径） | 数值 RS 求积 vs 解析闭式 + 量级/线性/阈值同源 | 可证伪验证报告、代理误差如实标注（聚焦增益无闭式→surrogate） |
 | `electric_field` | 电流 + 电极 → 靶区电场剂量（电模态） | 四层同心球准静态球谐解析解（Rush-Driscoll 基准） | 靶区 E(V/m)、闭式逆设计、实践窗口 advisory 标注（非监管硬线） |
 | `es_validation` | 电场剂量场的独立校验 | 单层球谐矩阵解 vs 级数求和闭式 + 可证伪性质 | 7 项验证门报告、近场截断单列 report、电导率缩放反比性 |
+| `anatomy` | 个体化解剖：设备参数到靶区剂量之间缺的那一层 | 头模数据契约 + 内置代理体模 + NIfTI/lead-field 导入适配器 + 群体抽样 | 带 DOI/许可溯源的 HeadModel、CC BY-NC/DUA 商用门禁、可复现群体解剖 |
+| `dose_features` | 给 L3 基准供数：剂量场到底该怎么描述 | 三模态多指标抽取 + 数值场体积分钩子 | 峰值+衰减+穿透+聚焦性+覆盖向量，逐项标 analytic/proxy/unavailable |
+| `l3bench` / `l3_validation` | 剂量-效应公开基准：能不能比、可不可以证伪 | 三层因果断裂 + 4 个一手案例 + 独立验证 | 多指标评测协议（拒绝单一 MAE）、每案带推翻条件、无聚合总分 |
 
 > **v0.4 战略转向**：项目从「证据审计工具」升级为「物理干预剂量学操作系统」的 L1 层。放疗靠 ICRU 报告标准 + DICOM-RT + TPS 成为精确医学；物理干预仍缺这一层。详见 [`DOSE_REPORTING_SPEC.md`](DOSE_REPORTING_SPEC.md) 与项目战略文档。`paramcheck`（判决）与 `dosimetry`（完整性诊断）正交并存，前者不放宽。
 >
@@ -31,6 +34,8 @@
 > **v0.7 L2 扩到超声/tFUS**：把光模态范式迁移到超声——换能器几何 + 颅骨衰减 → 靶区声压/MI/Isppa/温升，MI≤1.9 与温升≤2°C 阈值和 `paramcheck` 单一真源。焦点声压随颅骨厚度 2→8mm 变化 2.37×，定量复现「设备参数 ≠ 靶区剂量」。独立验证用数值 RS 求积交叉核对、把无独立闭式的聚焦增益如实标为 surrogate。详见 [`L2_ULTRASOUND.md`](L2_ULTRASOUND.md)。
 >
 > **v0.8 L2 三模态统一——电/tES-tDCS**：四层同心球准静态球谐解析解（Rush-Driscoll 1969 标准基准），电流 + 分层电导率 → 靶区电场 E(V/m) + 闭式逆设计。1mA → 皮层 0.20 V/m（文献锚点）；颅骨电导率变异 → 场强差 3.15×（对应 HCP 群体头模 2.1× 个体差异）。**诚实处理**：tES 无 FDA 硬阈值，2mA 只标 advisory 不冒充监管线；同心球无法定义「入脑比例」故不编造该数字。详见 [`L2_ELECTRIC.md`](L2_ELECTRIC.md)。
+>
+> **v0.9 个体化解剖 + L3 剂量-效应基准**：打通路线图下一步。L2 从解析球推进到个体化层——头模数据契约 + 内置代理体模 + NIfTI/lead-field 导入适配器 + **CC BY-NC/DUA 商用门禁**（不打包受约束数据）。L3 建立**三层因果断裂**框架：Kop 2026 实测 MR-ARFI 位移预测效应而模拟强度不预测、Spivak 2026 剂量递增至 14× FDA 限仍 inconclusive、Ghaempanah 2025 分割管线使聚焦性变 39% 而峰值不变。基准用**多指标拒绝单一 MAE**、每条带推翻条件、拒绝"谁最准"排行榜。详见 [`L3_BENCHMARK.md`](L3_BENCHMARK.md)。
 
 ## 安装与快速开始
 
@@ -93,6 +98,15 @@ python -m interface_atlas.cli usbench --which all     # 独立验证全套
 python -m interface_atlas.cli esfield --preset 4sphere --current 1.0
 python -m interface_atlas.cli esfield --inverse 0.3
 python -m interface_atlas.cli esbench --which all
+
+# L2 个体化解剖 + L3 剂量-效应基准（v0.9）
+python -m interface_atlas.cli headmodel list
+python -m interface_atlas.cli headmodel sample --n 100 --seed 42
+python -m interface_atlas.cli headmodel license --model ernie_extended_metadata --commercial
+python -m interface_atlas.cli dosefeatures light --depth 1.0
+python -m interface_atlas.cli dosefeatures ultrasound --skull
+python -m interface_atlas.cli l3bench cases
+python -m interface_atlas.cli l3bench validate
 ```
 
 `data/receptor_expression.csv` 与 `data/evidence_matrix.csv` 已随仓库提供，不下载原始 zip 也能查询；`--rebuild` 才需要原始 zip。
