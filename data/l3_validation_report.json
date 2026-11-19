@@ -1,0 +1,116 @@
+{
+  "checks": {
+    "geometry_conservation": {
+      "passed": true,
+      "rows": [
+        {
+          "model": "spherical",
+          "sum_thickness": 10.0,
+          "outer_radius": 10.0,
+          "strictly_increasing": true,
+          "conserved": true
+        },
+        {
+          "model": "mni152_style",
+          "sum_thickness": 9.5,
+          "outer_radius": 9.5,
+          "strictly_increasing": true,
+          "conserved": true
+        },
+        {
+          "model": "hcp_population",
+          "sum_thickness": 10.0,
+          "outer_radius": 10.0,
+          "strictly_increasing": true,
+          "conserved": true
+        },
+        {
+          "model": "ernie_extended_metadata",
+          "sum_thickness": 9.6,
+          "outer_radius": 9.6,
+          "strictly_increasing": true,
+          "conserved": true
+        }
+      ],
+      "note": "厚度和==外半径是层模型的几何恒等式；失败说明层半径定义错乱"
+    },
+    "license_gate": {
+      "passed": true,
+      "mit_commercial_ok": true,
+      "nc_commercial_rejected": true,
+      "nc_reason": "许可含非商用/使用条款约束：'CC BY-NC 4.0'；不得进入商用管线",
+      "dua_commercial_rejected": true,
+      "dua_reason": "许可含非商用/使用条款约束：'CC BY 4.0 + HCP Open Access DUA'；不得进入商用管线",
+      "nc_research_allowed": true,
+      "note": "CC BY-NC 与 HCP DUA 不得进商用管线；MIT 代理体模可商用",
+      "anchors": {
+        "analytic": "MIT",
+        "siminibs_ernie_extended": "CC BY-NC 4.0",
+        "hcp_population": "CC BY 4.0 + HCP Open Access DUA"
+      }
+    },
+    "population_sampling": {
+      "passed": true,
+      "n": 30,
+      "reproducible_same_seed": true,
+      "different_seed_differs": true,
+      "skull_mm_min": 4.726,
+      "skull_mm_max": 8.376,
+      "spread_mm": 3.651,
+      "all_physiological_2_15mm": true,
+      "illustrative": true,
+      "note": "分布为 illustrative 示例值；真实队列用 load_population_stats 替换"
+    },
+    "feature_multimetric": {
+      "passed": true,
+      "ultrasound_multimetric_complete": true,
+      "reliability_labeled": true,
+      "light_focality_unavailable": true,
+      "distinct_peak_units": [
+        "MPa (peak pressure)",
+        "V/m (target field)",
+        "relative fluence (surface=1)"
+      ],
+      "no_cross_modality_normalization": true,
+      "note": "单一标量会漏掉 Ghaempanah 2025 的 39% 聚焦性差异"
+    },
+    "numeric_field_focality": {
+      "passed": true,
+      "expected_focality": 0.000751315,
+      "measured_focality": 0.000751315,
+      "expected_coverage_cm3": 0.125,
+      "measured_coverage_cm3": 0.125,
+      "note": "用单峰值体素的解析体积占比交叉核对数值体素求和（不同实现路径）"
+    },
+    "benchmark_protocol": {
+      "passed": true,
+      "empty_all_insufficient": true,
+      "aggregate_refused": true,
+      "threshold_gate_ok": true,
+      "all_cases_admitted": true,
+      "n_cases": 4,
+      "required_metrics": [
+        "peak_accuracy",
+        "focality_agreement",
+        "coverage_calibration",
+        "dose_response_shape",
+        "anatomy_sensitivity"
+      ],
+      "note": "拒绝单一聚合分；缺指标=证据不足不猜；逐指标过阈不做加权求和"
+    },
+    "three_gaps_anchored": {
+      "passed": true,
+      "n_gaps": 3,
+      "all_anchored": true,
+      "all_with_implication": true,
+      "all_with_doi": true,
+      "kop_and_spivak_present": true,
+      "note": "锚点必须是一手研究（Kop 2026 MR-ARFI / Spivak 2026 剂量递增），不编造"
+    }
+  },
+  "gates": {
+    "l3_benchmark_selfcheck": true
+  },
+  "overall_passed": true,
+  "disclaimer": "L3 种子基准不是临床指南或疗效结论；它索引已发表研究的剂量-效应发现，用于统一评测口径与可证伪比较。任何条目不得被解读为治疗建议。"
+}
