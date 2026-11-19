@@ -1,0 +1,195 @@
+{
+  "version": "L2-electric-alpha",
+  "overall_passed": true,
+  "gated_checks": [
+    "single_sphere_vs_closed_form",
+    "current_linearity",
+    "conductivity_scale_invariance",
+    "skull_monotonicity",
+    "inverse_roundtrip",
+    "magnitude_anchor",
+    "advisory_labeling"
+  ],
+  "reported_only": [
+    "near_field_truncation"
+  ],
+  "checks": {
+    "single_sphere_vs_closed_form": {
+      "passed": true,
+      "criterion": "relative error <1e-3 at r<=7cm (away from point-electrode singularity)",
+      "method": "2N×2N spherical-harmonic linear solve vs analytic closed form (series sum)",
+      "sigma_s_m": 0.33,
+      "R_cm": 9.0,
+      "current_ma": 1.0,
+      "n_harmonics": 48,
+      "worst_relative_error": 0.0,
+      "rows": [
+        {
+          "r_cm": 0.5,
+          "harmonic_v_m": 0.17991774,
+          "closed_form_v_m": 0.17991774,
+          "relative_error": 0.0
+        },
+        {
+          "r_cm": 2.0,
+          "harmonic_v_m": 0.20091932,
+          "closed_form_v_m": 0.20091932,
+          "relative_error": 0.0
+        },
+        {
+          "r_cm": 4.5,
+          "harmonic_v_m": 0.34401867,
+          "closed_form_v_m": 0.34401867,
+          "relative_error": -0.0
+        },
+        {
+          "r_cm": 7.0,
+          "harmonic_v_m": 1.37527354,
+          "closed_form_v_m": 1.37527354,
+          "relative_error": -0.0
+        }
+      ],
+      "note": "共享点电极 Neumann 边界假设；此项锁住线性系统求解正确，不验证电极模型本身"
+    },
+    "current_linearity": {
+      "cases": [
+        {
+          "current_ma": 0.5,
+          "field_v_m": 0.10031791,
+          "potential_v": -0.00453896
+        },
+        {
+          "current_ma": 1.0,
+          "field_v_m": 0.20063581,
+          "potential_v": -0.00907793
+        },
+        {
+          "current_ma": 2.0,
+          "field_v_m": 0.40127162,
+          "potential_v": -0.01815586
+        }
+      ],
+      "passed": true,
+      "field_ratio_2x": 2.0,
+      "note": "准静态线性方程 + 固定电流源 ⇒ E 与 I 严格线性"
+    },
+    "conductivity_scale_invariance": {
+      "k": 2.0,
+      "field_original_v_m": 0.20063581,
+      "field_scaled_v_m": 0.10031791,
+      "expected_ratio": 0.5,
+      "measured_ratio": 0.5,
+      "relative_error": 0.0,
+      "passed": true,
+      "note": "固定电流源 + 准静态 ⇒ 整体 σ×k 使 E×1/k；检验 Neumann 边界实现"
+    },
+    "skull_monotonicity": {
+      "passed": true,
+      "field_max_min_ratio": 3.147,
+      "monotone_increasing": true,
+      "cases": [
+        {
+          "skull_conductivity_s_m": 0.0042,
+          "field_v_m": 0.128457
+        },
+        {
+          "skull_conductivity_s_m": 0.0083,
+          "field_v_m": 0.200633
+        },
+        {
+          "skull_conductivity_s_m": 0.015,
+          "field_v_m": 0.283033
+        },
+        {
+          "skull_conductivity_s_m": 0.03,
+          "field_v_m": 0.404203
+        }
+      ],
+      "interpretation": "同一注入电流、仅颅骨电导率不同 → 靶区电场按颅骨阻抗变化；与 HCP 群体头模「组织电导率变异致皮层场波动 2.1×」同向，是「设备参数 ≠ 靶区剂量」的电模态定量证据",
+      "literal_anchor": "Berger 等 HCP 100 例群体头模（2025）：组织电导率变异使皮层电场波动达 2.1×"
+    },
+    "inverse_roundtrip": {
+      "cases": [
+        {
+          "target_v_m": 0.1,
+          "required_ma": 0.49841551,
+          "recomputed_v_m": 0.1,
+          "residual_rel": 0.0
+        },
+        {
+          "target_v_m": 0.2,
+          "required_ma": 0.99683102,
+          "recomputed_v_m": 0.2,
+          "residual_rel": 0.0
+        },
+        {
+          "target_v_m": 0.4,
+          "required_ma": 1.99366204,
+          "recomputed_v_m": 0.4,
+          "residual_rel": 0.0
+        }
+      ],
+      "worst_residual_rel": 0.0,
+      "passed": true,
+      "note": "E∝I 线性 ⇒ 闭式逆解精确，正向重算残差应 ~0"
+    },
+    "magnitude_anchor": {
+      "field_v_m": 0.200636,
+      "field_mv_mm": 0.200636,
+      "expected_literature_range_v_m": [
+        0.1,
+        0.5
+      ],
+      "in_range": true,
+      "passed": true,
+      "source": "tDCS 1-2mA 实践窗；1mA 皮层场 ~0.2 V/m 量级（Rush-Driscoll 球模型+ 文献 tDCS 仿真）；四球电导率来自 PMC9927519（已核实 2026-11-19）",
+      "note": "量级锚点非精确判据；真实头模个体差异可达 2.1×"
+    },
+    "advisory_labeling": {
+      "practice_current_max_ma": 2.0,
+      "high_current_warns": [
+        "电流 3.00mA > 实践窗口 2.0mA（advisory（研究实践参考，非 FDA/监管硬阈值））；>2mA 属研究性用法，需 IRB/安全评估",
+        "tES 无 FDA 硬阈值；实践窗口标注为 advisory（研究实践参考，非 FDA/监管硬阈值），个体差异可使皮层场波动约 2.1×（HCP 群体头模）"
+      ],
+      "advisory_labeled": true,
+      "over_window_flagged": true,
+      "inverse_flags_over_window": true,
+      "passed": true,
+      "note": "tES 无 FDA 硬阈值；2mA 是二十年实践窗口，冒充硬阈值即撒谎"
+    }
+  },
+  "near_field_truncation": {
+    "role": "report truncation error (NOT a pass/fail gate; near-field point electrode invalid)",
+    "r_cm": 8.5,
+    "u": 0.9444,
+    "rows": [
+      {
+        "n_harmonics": 12,
+        "harmonic_v_m": 8.110573,
+        "closed_form_v_m": 19.858442,
+        "relative_error": -0.591581
+      },
+      {
+        "n_harmonics": 24,
+        "harmonic_v_m": 15.176414,
+        "closed_form_v_m": 19.858442,
+        "relative_error": -0.23577
+      },
+      {
+        "n_harmonics": 48,
+        "harmonic_v_m": 19.338179,
+        "closed_form_v_m": 19.858442,
+        "relative_error": -0.026199
+      },
+      {
+        "n_harmonics": 96,
+        "harmonic_v_m": 19.854475,
+        "closed_form_v_m": 19.858442,
+        "relative_error": -0.0002
+      }
+    ],
+    "error_shrinks_with_more_harmonics": true,
+    "interpretation": "点电极在 r→R 有奇异，有限阶球谐必然截断；闭式同处发散。靠近头皮/电极正下方的场强本就不可信（引擎已 WARN），此处只量化截断行为"
+  },
+  "disclaimer": "L2 电场剂量场引擎是四层同心球准静态降阶模型（Rush-Driscoll 解析基准），非临床处方或治疗计划系统；不含真实头形/脑沟回/各向异性/接触阻抗，点电极近表面场奇异；tES 无 FDA 硬阈值，2mA 为实践窗口（advisory）。"
+}
