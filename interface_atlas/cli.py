@@ -8,6 +8,7 @@ from pathlib import Path
 from . import __version__, calibration, claimcheck, dosimetry, evidence, link, mc_light, paramcheck, receptors
 from . import light_field, ultrasound_field as usfield, us_validation
 from . import electric_field as esfield, es_validation
+from . import anatomy, dose_features, l3bench, l3_validation
 
 
 def _print_rows(rows: list[dict], columns: list[str]) -> None:
@@ -428,6 +429,91 @@ def _esbench(args: argparse.Namespace) -> int:
     return 0
 
 
+def _headmodel(args: argparse.Namespace) -> int:
+    """L2 个体化解剖：内置代理体模 / 群体抽样 / 许可门禁。"""
+    if args.action == "list":
+        print("内置代理体模（非真实影像数据）：")
+        for name, m in anatomy.BUILTIN_MODELS.items():
+            ok, _ = anatomy.check_license(m, commercial=True)
+            print(f"  {name:24s} 颅骨={m.skull_thickness_mm():.2f}mm "
+                  f"许可={m.license} 商用={'允许' if ok else '禁止'} "
+                  f"{'[illustrative]' if m.illustrative else ''}")
+        return 0
+    if args.action == "show":
+        m = anatomy.get_model(args.model)
+        print(anatomy.render(m))
+        if args.as_json:
+            print(json.dumps(m.as_dict(), ensure_ascii=False, indent=2))
+        return 0
+    if args.action == "sample":
+        models = anatomy.population_sample(n=args.n, seed=args.seed)
+        print(f"群体解剖抽样 n={args.n} seed={args.seed}（illustrative 示例分布）：")
+        skulls = [m.skull_thickness_mm() for m in models]
+        print(f"  颅骨厚度 mm：min={min(skulls):.2f} max={max(skulls):.2f} "
+              f"均值={sum(skulls)/len(skulls):.2f}")
+        if args.as_json:
+            print(json.dumps([m.as_dict() for m in models], ensure_ascii=False, indent=2))
+        return 0
+    if args.action == "license":
+        m = anatomy.get_model(args.model)
+        ok, reason = anatomy.check_license(m, commercial=args.commercial)
+        print(f"[{'PASS' if ok else 'BLOCK'}] {m.subject_id}: {reason}")
+        return 0 if ok else 1
+    return 1
+
+
+def _dosefeatures(args: argparse.Namespace) -> int:
+    """L3 供给：从三模态剂量场抽取多指标特征。"""
+    if args.modality == "light":
+        r = light_field.dose_field(light_field.TissueOptics(args.mu_a, args.mu_sp),
+                                   max_depth_cm=2.0, target_depth_cm=args.depth)
+        v = dose_features.from_light_field(r, subject_id=args.subject)
+    elif args.modality == "ultrasound":
+        tr = usfield.TRANSDUCER_PRESETS[args.preset]
+        layers = (usfield.TISSUE_PRESETS["skull_thin"],) if args.skull else ()
+        r = usfield.dose_field(tr, layers)
+        v = dose_features.from_ultrasound(r, subject_id=args.subject, transducer=tr)
+    else:
+        r = esfield.dose_field(args.current, target_depth_cm=args.depth)
+        v = dose_features.from_electric(r, subject_id=args.subject)
+    print(dose_features.render(v))
+    if args.as_json:
+        print(json.dumps(v.as_dict(), ensure_ascii=False, indent=2, default=str))
+    return 0
+
+
+def _l3bench(args: argparse.Namespace) -> int:
+    """L3 剂量-效应基准：种子案例 / 独立验证 / 提交评测。"""
+    if args.action == "cases":
+        for c in l3bench.CASES:
+            print(l3bench.render_case(c))
+            print()
+        return 0
+    if args.action == "validate":
+        rep = l3_validation.build_report()
+        print(l3_validation.render_report(rep))
+        if args.as_json:
+            print(json.dumps(rep, ensure_ascii=False, indent=2, default=str))
+        return 0 if rep["overall_passed"] else 1
+    if args.action == "submit":
+        if not args.file:
+            print("需 --file 提供提交 JSON（case_id -> 各指标数值）")
+            return 1
+        subs = json.loads(Path(args.file).read_text(encoding="utf-8"))
+        r = l3bench.run_benchmark(subs)
+        print(f"评测：passed={r['summary']['passed']} failed={r['summary']['failed']} "
+              f"insufficient={r['summary']['insufficient_evidence']}")
+        for c in r["cases"]:
+            s = c["score"]
+            verdict = {True: "PASS", False: "FAIL", None: "N/A(证据不足)"}[s["passed"]]
+            print(f"  [{verdict:14s}] {s['case_id']}: {s['note']}")
+        print(f"  聚合总分：{r['aggregate_score']}（{r['aggregate_refused_reason']}）")
+        if args.as_json:
+            print(json.dumps(r, ensure_ascii=False, indent=2, default=str))
+        return 0
+    return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="interface-atlas", description="非药物接口层：接收器图谱 + 证据剂量图谱")
     p.add_argument("--version", action="version", version=__version__)
@@ -563,6 +649,33 @@ def build_parser() -> argparse.ArgumentParser:
     eb = sub.add_parser("esbench", help="L2 电场验证：单层闭式交叉核对 / 全套 / 颅骨敏感性")
     eb.add_argument("--which", choices=["all", "closed", "skull"], default="all")
     eb.set_defaults(func=_esbench)
+
+    hm = sub.add_parser("headmodel", help="L2 个体化解剖：代理体模 / 群体抽样 / 许可门禁")
+    hm.add_argument("action", choices=["list", "show", "sample", "license"])
+    hm.add_argument("--model", default="spherical", help="体模名（show/license 用）")
+    hm.add_argument("--n", type=int, default=100, help="群体抽样数量")
+    hm.add_argument("--seed", type=int, default=20261119, help="群体抽样随机种子")
+    hm.add_argument("--commercial", action="store_true", help="按商用用途校验许可")
+    hm.add_argument("--as-json", dest="as_json", action="store_true")
+    hm.set_defaults(func=_headmodel)
+
+    dfp = sub.add_parser("dosefeatures", help="L3 供给：三模态剂量场多指标特征")
+    dfp.add_argument("modality", choices=["light", "ultrasound", "electric"])
+    dfp.add_argument("--subject", default="analytic")
+    dfp.add_argument("--preset", default="tfus_transcranial")
+    dfp.add_argument("--skull", action="store_true", help="超声：是否计入颅骨层")
+    dfp.add_argument("--mu-a", dest="mu_a", type=float, default=0.3)
+    dfp.add_argument("--mu-sp", dest="mu_sp", type=float, default=70.0)
+    dfp.add_argument("--depth", type=float, default=2.2)
+    dfp.add_argument("--current", type=float, default=1.0)
+    dfp.add_argument("--as-json", dest="as_json", action="store_true")
+    dfp.set_defaults(func=_dosefeatures)
+
+    lb = sub.add_parser("l3bench", help="L3 剂量-效应基准：种子案例 / 验证 / 提交评测")
+    lb.add_argument("action", choices=["cases", "validate", "submit"])
+    lb.add_argument("--file", help="提交 JSON 路径（submit 用）")
+    lb.add_argument("--as-json", dest="as_json", action="store_true")
+    lb.set_defaults(func=_l3bench)
     return p
 
 
