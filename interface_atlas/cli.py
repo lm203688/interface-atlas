@@ -7,6 +7,7 @@ from pathlib import Path
 
 from . import __version__, calibration, claimcheck, dosimetry, evidence, link, mc_light, paramcheck, receptors
 from . import light_field, ultrasound_field as usfield, us_validation
+from . import electric_field as esfield, es_validation
 
 
 def _print_rows(rows: list[dict], columns: list[str]) -> None:
@@ -365,6 +366,68 @@ def _usbench(args: argparse.Namespace) -> int:
     return 0
 
 
+def _esfield(args: argparse.Namespace) -> int:
+    """L2 电场剂量场：电流 + 电极 → 靶区电场（含逆设计，四球解析基准）。"""
+    if args.preset == "uniform":
+        layers = esfield.UNIFORM_SPHERE
+    elif args.preset == "4sphere":
+        layers = esfield.HEAD_4SPHERE
+    else:
+        print(f"未知头模型预设 {args.preset}；可用：4sphere / uniform")
+        return 2
+
+    if args.inverse is not None:
+        inv = esfield.inverse_current(
+            float(args.inverse), layers=layers,
+            target_depth_cm=float(args.target_depth),
+            electrode_area_cm2=float(args.electrode_area),
+            n_harmonics=int(args.harmonics),
+        )
+        print("## L2 电场逆设计（闭式解 + 正向复核）")
+        print(f"- 头模型 {args.preset}，靶区深度 {args.target_depth} cm，目标场强 {args.inverse} V/m")
+        print(f"- 所需注入电流 {inv['required_current_ma']:.4f} mA（场/电流 k={inv['field_per_ma_v_m']:.4f} V/m/mA）")
+        print(f"- 正向复核残差: {inv['residual_rel']:.2e}")
+        print(f"- 实践窗口(≤{inv['practice_current_max_ma']}mA, advisory): "
+              f"{'内' if inv['within_practice_window'] else '超出'}")
+        print(f"  ⚠ {inv['note']}")
+        print(f"> {inv['caveat']}")
+        if args.as_json:
+            print(json.dumps(inv, ensure_ascii=False, indent=2, default=str))
+        return 0
+
+    result = esfield.dose_field(
+        float(args.current), layers=layers,
+        target_depth_cm=float(args.target_depth),
+        electrode_area_cm2=float(args.electrode_area),
+        n_harmonics=int(args.harmonics),
+    )
+    print(esfield.render(result))
+    if args.as_json:
+        print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
+    return 0
+
+
+def _esbench(args: argparse.Namespace) -> int:
+    """L2 电场验证：单层闭式交叉核对 / 独立验证全套 / 颅骨敏感性。"""
+    which = args.which
+    if which in ("all", "closed"):
+        r = es_validation.single_sphere_vs_closed_form()
+        print("=== 单层球谐 vs 解析闭式 ===")
+        print(f"[{'PASS' if r['passed'] else 'FAIL'}] 最坏相对误差 {r['worst_relative_error']}")
+        if which == "closed":
+            print(json.dumps(r, ensure_ascii=False, indent=2, default=str))
+    if which in ("all", "skull"):
+        s = esfield.skull_conductivity_sensitivity()
+        print("\n=== 颅骨电导率敏感性（个体差异论点）===")
+        print(json.dumps(s, ensure_ascii=False, indent=2, default=str))
+    if which == "all":
+        rep = es_validation.build_report()
+        print("\n=== 独立验证全套 ===")
+        print(es_validation.render_report(rep))
+        return 0 if rep["overall_passed"] else 1
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="interface-atlas", description="非药物接口层：接收器图谱 + 证据剂量图谱")
     p.add_argument("--version", action="version", version=__version__)
@@ -484,6 +547,22 @@ def build_parser() -> argparse.ArgumentParser:
     ub = sub.add_parser("usbench", help="L2 超声验证：RS 积分交叉核对 / 独立验证全套 / 颅骨敏感性")
     ub.add_argument("--which", choices=["all", "rs", "skull"], default="all")
     ub.set_defaults(func=_usbench)
+
+    es = sub.add_parser("esfield", help="L2 电场剂量场：电流 + 电极 → 靶区电场（四球解析基准，含逆设计）")
+    es.add_argument("--preset", default="4sphere", help="头模型：4sphere（四层）/ uniform（均匀球）")
+    es.add_argument("--current", default="1.0", help="注入电流 mA，默认 1.0")
+    es.add_argument("--target-depth", dest="target_depth", default="2.2",
+                    help="靶区距头皮深度 cm，默认 2.2（落在脑层）")
+    es.add_argument("--electrode-area", dest="electrode_area", default="35.0",
+                    help="电极面积 cm²（估计电极下电流密度），默认 35")
+    es.add_argument("--harmonics", default="32", help="球谐截断阶数，默认 32")
+    es.add_argument("--inverse", help="逆设计：目标靶区场强 V/m，反推所需注入电流")
+    es.add_argument("--as-json", dest="as_json", action="store_true", help="额外输出 JSON")
+    es.set_defaults(func=_esfield)
+
+    eb = sub.add_parser("esbench", help="L2 电场验证：单层闭式交叉核对 / 全套 / 颅骨敏感性")
+    eb.add_argument("--which", choices=["all", "closed", "skull"], default="all")
+    eb.set_defaults(func=_esbench)
     return p
 
 
