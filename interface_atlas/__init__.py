@@ -12,11 +12,14 @@
   calibration  —— L2 中阶：split conformal 剂量区间（有限样本覆盖保证）
   ultrasound_field —— L2 超声/tFUS 剂量场：换能器参数 + 颅骨衰减 → 靶区声压/MI/温升
   us_validation —— L2 超声独立验证：RS 积分交叉核对 + 代理误差如实报告
+  electric_field —— L2 电/tES-tDCS 剂量场：四球解析解 + 靶区电场 + 逆设计
+  es_validation —— L2 电场独立验证：单层球谐 vs 解析闭式 + 可证伪性质
 
 MIT License.
 """
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 
 from . import calibration, dosimetry, light_field, mc_light, paramcheck  # noqa: F401
 from . import ultrasound_field, us_validation  # noqa: F401
+from . import electric_field, es_validation  # noqa: F401
