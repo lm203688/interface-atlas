@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 from . import __version__, calibration, claimcheck, dosimetry, evidence, link, mc_light, paramcheck, receptors
-from . import light_field
+from . import light_field, ultrasound_field as usfield, us_validation
 
 
 def _print_rows(rows: list[dict], columns: list[str]) -> None:
@@ -286,6 +286,85 @@ def _calibrate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _usfield(args: argparse.Namespace) -> int:
+    """L2 超声剂量场：正向计算 + 逆设计（承接 L1 的 tFUS reproducible_with_model）。"""
+    if args.preset:
+        if args.preset not in usfield.TRANSDUCER_PRESETS:
+            print(f"未知换能器预设 {args.preset}；可用：{', '.join(usfield.TRANSDUCER_PRESETS)}")
+            return 2
+        tr = usfield.TRANSDUCER_PRESETS[args.preset]
+    else:
+        if args.intensity is None:
+            print("请提供 --preset 或 --intensity（表面声强 W/cm²）")
+            return 2
+        tr = usfield.Transducer(
+            float(args.radius), float(args.focal), float(args.frequency),
+            float(args.intensity), float(args.efficiency),
+        )
+
+    # 颅骨层：按名称预设或自定义厚度
+    if args.skull_mm is not None:
+        skull = usfield.TissueLayer(float(args.skull_mm) / 10.0, 2800.0, 1900.0, 25.0,
+                                    1.0, 1.0, f"skull custom {args.skull_mm}mm")
+    elif args.skull:
+        if args.skull not in usfield.TISSUE_PRESETS:
+            print(f"未知组织预设 {args.skull}；可用：{', '.join(usfield.TISSUE_PRESETS)}")
+            return 2
+        skull = usfield.TISSUE_PRESETS[args.skull]
+    else:
+        skull = usfield.TISSUE_PRESETS["skull_thin"]
+
+    if args.inverse is not None:
+        inv = usfield.inverse_intensity(
+            float(args.inverse), tr, (skull,),
+        )
+        print("## L2 超声逆设计（闭式解 + 正向复核）")
+        print(f"- 换能器: f={tr.frequency_mhz}MHz, a={tr.radius_cm}cm, F={tr.focal_length_cm}cm, F#={tr.f_number:.2f}")
+        print(f"- 颅骨: {skull.name}, 衰减 {skull.attenuation_at(tr.frequency_mhz)*skull.thickness_cm:.2f}dB")
+        print(f"- 靶区目标声压 {args.inverse} MPa → 所需表面声强 {inv['required_surface_intensity_w_cm2']:.4f} W/cm²")
+        print(f"- 正向复核残差: {inv['residual_rel']:.2e}")
+        print(f"- 目标处 MI: {inv['mi_at_target']:.3f}（阈值 {usfield.MI_LIMIT}）")
+        print(f"- 可行性: {'可行' if inv['feasible'] else '不可行'}")
+        if inv.get("infeasibility_note"):
+            print(f"  ⚠ {inv['infeasibility_note']}")
+        print(f"> {inv['caveat']}")
+        if args.as_json:
+            print(json.dumps(inv, ensure_ascii=False, indent=2))
+        return 0
+
+    result = usfield.dose_field(
+        tr, (skull,),
+        duty_cycle=float(args.duty), pulse_duration_s=float(args.duration),
+    )
+    print(usfield.render(result))
+    if args.as_json:
+        print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
+    return 0 if not result.mi_exceeded else 1
+
+
+def _usbench(args: argparse.Namespace) -> int:
+    """L2 超声验证：数值 RS 积分 / 独立验证全套 / 颅骨敏感性。"""
+    which = args.which
+    if which in ("all", "rs"):
+        r = us_validation.axis_comparison()
+        print("=== 平面活塞轴上场：数值 RS 求积 vs 解析闭式 ===")
+        print(f"[{'PASS' if r['passed'] else 'FAIL'}] RMS={r['rms_diff']}, max={r['max_abs_diff']}")
+        if which == "rs":
+            print(json.dumps(r, ensure_ascii=False, indent=2))
+    if which in ("all", "skull"):
+        s = usfield.skull_sensitivity(
+            usfield.TRANSDUCER_PRESETS["tfus_transcranial"], (0.2, 0.4, 0.6, 0.8)
+        )
+        print("\n=== 颅骨厚度敏感性（PNAS 论点超声版）===")
+        print(json.dumps(s, ensure_ascii=False, indent=2))
+    if which == "all":
+        rep = us_validation.build_report()
+        print("\n=== 独立验证全套 ===")
+        print(us_validation.render_report(rep))
+        return 0 if rep["overall_passed"] else 1
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="interface-atlas", description="非药物接口层：接收器图谱 + 证据剂量图谱")
     p.add_argument("--version", action="version", version=__version__)
@@ -386,6 +465,25 @@ def build_parser() -> argparse.ArgumentParser:
     cb.add_argument("--test", default="24", help="rebuild: test 段参数点数")
     cb.add_argument("--photons", default="80000", help="rebuild: 每点光子数")
     cb.set_defaults(func=_calibrate)
+
+    us = sub.add_parser("usfield", help="L2 超声剂量场：换能器参数 → 靶区声压/MI（含逆设计）")
+    us.add_argument("--preset", help="换能器预设：tfus_transcranial / tfus_superficial / tfus_deep")
+    us.add_argument("--radius", default="3.0", help="自定义孔半径 cm（无 preset 时用）")
+    us.add_argument("--focal", default="8.0", help="自定义焦距 cm")
+    us.add_argument("--frequency", default="0.5", help="自定义频率 MHz")
+    us.add_argument("--intensity", help="表面平均声强 W/cm²（换能器功率÷孔面积，无 preset 时必填）")
+    us.add_argument("--efficiency", default="0.7", help="聚焦效率 η，默认 0.7")
+    us.add_argument("--skull", help="颅骨组织预设，默认 skull_thin；可用 water/skull_thin/skull_thick")
+    us.add_argument("--skull-mm", dest="skull_mm", help="自定义颅骨厚度 mm（覆盖 --skull）")
+    us.add_argument("--duty", default="1.0", help="占空比 (0,1]，默认 1.0")
+    us.add_argument("--duration", default="1.0", help="照射时长 s（温升粗估），默认 1.0")
+    us.add_argument("--inverse", help="逆设计：目标靶区峰值声压 MPa，反推所需表面声强")
+    us.add_argument("--as-json", dest="as_json", action="store_true", help="额外输出 JSON")
+    us.set_defaults(func=_usfield)
+
+    ub = sub.add_parser("usbench", help="L2 超声验证：RS 积分交叉核对 / 独立验证全套 / 颅骨敏感性")
+    ub.add_argument("--which", choices=["all", "rs", "skull"], default="all")
+    ub.set_defaults(func=_usbench)
     return p
 
 
