@@ -10,10 +10,13 @@
   light_field  —— L2 光剂量场：P1 扩散近似正向解 + 逆设计（可微、CPU 可跑）
   mc_light     —— L2 独立 Monte Carlo 求解器（验证金标准 + 解剖敏感性）
   calibration  —— L2 中阶：split conformal 剂量区间（有限样本覆盖保证）
+  ultrasound_field —— L2 超声/tFUS 剂量场：换能器参数 + 颅骨衰减 → 靶区声压/MI/温升
+  us_validation —— L2 超声独立验证：RS 积分交叉核对 + 代理误差如实报告
 
 MIT License.
 """
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 from . import calibration, dosimetry, light_field, mc_light, paramcheck  # noqa: F401
+from . import ultrasound_field, us_validation  # noqa: F401
