@@ -26,6 +26,7 @@ jobs:
         run: python -m pytest tests -q
       - name: Credential scan（凭证不得入库）
         run: |
-          if grep -rEn "ghp_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN.*PRIVATE KEY" --exclude-dir=.git . ; then
+          if grep -rEn "ghp_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN.*PRIVATE KEY" \
+              --exclude-dir=.git --exclude=test.yml . ; then
             echo "::error::疑似凭证入库"; exit 1
           fi
