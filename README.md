@@ -111,6 +111,28 @@ python -m interface_atlas.cli l3bench validate
 
 `data/receptor_expression.csv` 与 `data/evidence_matrix.csv` 已随仓库提供，不下载原始 zip 也能查询；`--rebuild` 才需要原始 zip。
 
+## 产品化入口（v1.0）
+
+CLI 之外，同一判定内核有三个等价入口，结果逐字节一致（一致性测试在列）：
+
+| 入口 | 启动方式 | 适用 |
+|---|---|---|
+| **MCP 服务**（AI 代理） | `python -m interface_atlas.mcp_server` | Claude / Cursor / Kimi 等 MCP 客户端零配置接入 10 个工具 |
+| **本地 Web API** | `python -m interface_atlas.webapp --port 7100` | REST 调用（仅绑 127.0.0.1，公网部署请自行加认证与 TLS） |
+| **交互站** | 启动 Web API 后浏览器打开 `http://127.0.0.1:7100/` | 五步评估旅程（宣称→证据→参数→剂量→基准）一屏跑通 |
+
+```bash
+# 例：自然语言驱动完整旅程（MCP）
+python -m interface_atlas.mcp_server   # 在 MCP 客户端中指向该命令
+
+# 例：REST API
+curl -s -X POST http://127.0.0.1:7100/api/claim \
+  -H "Content-Type: application/json" \
+  -d '{"text": "红光面板能抗衰老延寿"}'
+```
+
+端点：`/api/claim` `/api/paramcheck` `/api/doseaudit` `/api/dosefield` `/api/evidence` `/api/report` `/api/headmodels` `/api/l3cases` `/api/meta`。每个响应都带证据指纹、库版本与边界声明，可被外部审计。判定内核与 CLI 完全同源，服务层只做搬运与呈现。
+
 ## 接收器面板（13 个基因）
 
 | 模态 | 基因 | 接收器 |
