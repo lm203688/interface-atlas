@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "interface-atlas: 物理干预剂量学操作系统（L1 规范层 + L2 三模态剂量场 + L3 种子基准）"
+abstract: >-
+  非药物「调用接口层」的可计算地基：物理干预剂量报告规范 v1（四层剂量本体）、
+  光/超声/电三模态降阶剂量场引擎（含 split conformal 校准区间）、
+  ClaimCheck/ParamCheck 可证伪判定层，以及剂量-效应公开种子基准。
+  代码 MIT；HPA 数据 CC BY 4.0 须署名。
+type: software
+authors:
+  - family-names: Li
+    given-names: Xing
+repository-code: "https://github.com/lm203688/interface-atlas"
+license: MIT
+version: 1.0.0
+date-released: "2026-11-19"
+keywords:
+  - dose reporting standard
+  - neuromodulation
+  - photobiomodulation
+  - focused ultrasound
+  - conformal prediction
+  - evidence audit
+references:
+  - type: article
+    title: "A single-cell type transcriptomics map of human tissues"
+    authors:
+      - family-names: Karlsson
+        given-names: M.
+    journal: "Science Advances"
+    year: 2021
+    doi: "10.1126/sciadv.abh2169"
+    notes: "HPA v25.1 单细胞 RNA 数据源（CC BY 4.0），使用 A1 数据须同时引用本文。"
