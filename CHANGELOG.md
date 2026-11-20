@@ -2,6 +2,31 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与语义化版本。
 
+## [1.2.0] - 2026-11-21
+
+P1 启动：证据产线 + 治理件。**判定内核与既有 103 条证据零改动**。
+
+### 新增
+
+- **证据产线**（`interface_atlas/harvest.py`）：LLM 候选 → 确定性机器裁判。字段/枚举 schema 校验、
+  三重去重（ID / 来源 URL / 模态+终点+细胞类型）、来源三态核验
+  （`verified` / `refuted` / `unverified`）、SHA-256 内容指纹、人审队列落盘。
+  **永不自动入库**，`auto_committed` 恒为 0。
+- **三态设计的一手依据**：实测 CrossRef API 返回 429 限流、NCBI eutils 可达（1.14 s）。
+  因此限流/离线/不支持来源一律标 `unverified`，不判伪也不冒充通过；
+  只有明确 404 才进 `rejected`。
+- **产线独立验证**（`harvest_validation.py` + `data/harvest_validation_report.json`）：
+  用字符串切片实现交叉核对正则解析器、指纹抗篡改、证据库字节不变检验、
+  替换 I/O 层注入 200/404/429/error 验证三态——零真实网络请求。
+- **治理三件套**：`GOVERNANCE.md`（决策分级：AI 自主 vs 本人密钥/资金/法律；证据入库五道门）、
+  `ROADMAP.md`（公开版本路线 + 非目标）、`CONTRIBUTING.md`（外部贡献者 30 分钟提交第一条证据教程）。
+- **CLI** `harvest --input/--offline/--save/--validate`；测试 11 项。
+
+### 明确未做
+
+- 证据库仍为 103 条。**300+ 条扩库需真实文献与人工签字，AI 不编造**——产线就绪不等于产线已跑满。
+- Zenodo DOI、PyPI 发布决策、L1 外部引用冲刺未做（需本人账号或拍板）。
+
 ## [1.1.0] - 2026-11-20
 
 按《生产级提升与前沿提升建议报告》P0 六项落地：工程外壳硬化，**判定内核零改动**。
