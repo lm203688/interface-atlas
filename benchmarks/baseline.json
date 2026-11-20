@@ -1,0 +1,107 @@
+{
+  "slo": {
+    "p95_ms_ceiling": 200.0,
+    "deterministic": true
+  },
+  "environment": {
+    "note": "本机单次实测；跨机器只比阈值，不与基线数值硬比对"
+  },
+  "repeat": 200,
+  "latency_ms": {
+    "meta": {
+      "n": 200,
+      "p50_ms": 1.0347,
+      "p95_ms": 1.5755,
+      "p99_ms": 2.1224,
+      "max_ms": 2.2321
+    },
+    "claim_check": {
+      "n": 200,
+      "p50_ms": 1.9567,
+      "p95_ms": 2.9002,
+      "p99_ms": 3.3529,
+      "max_ms": 4.4245
+    },
+    "paramcheck": {
+      "n": 200,
+      "p50_ms": 0.928,
+      "p95_ms": 1.5236,
+      "p99_ms": 1.8392,
+      "max_ms": 2.0028
+    },
+    "dose_audit": {
+      "n": 200,
+      "p50_ms": 1.1492,
+      "p95_ms": 2.4211,
+      "p99_ms": 4.0141,
+      "max_ms": 9.282
+    },
+    "evidence_query": {
+      "n": 200,
+      "p50_ms": 1.4888,
+      "p95_ms": 2.3786,
+      "p99_ms": 2.893,
+      "max_ms": 4.1344
+    },
+    "dose_field_light": {
+      "n": 200,
+      "p50_ms": 3.459,
+      "p95_ms": 4.336,
+      "p99_ms": 4.8157,
+      "max_ms": 4.942
+    },
+    "l3_cases": {
+      "n": 200,
+      "p50_ms": 0.8362,
+      "p95_ms": 1.3753,
+      "p99_ms": 1.7216,
+      "max_ms": 2.0934
+    },
+    "report": {
+      "n": 200,
+      "p50_ms": 2.6609,
+      "p95_ms": 3.7041,
+      "p99_ms": 4.301,
+      "max_ms": 4.6103
+    }
+  },
+  "determinism": {
+    "meta": {
+      "stable": true,
+      "bytes": 306
+    },
+    "claim_check": {
+      "stable": true,
+      "bytes": 1079
+    },
+    "paramcheck": {
+      "stable": true,
+      "bytes": 1693
+    },
+    "dose_audit": {
+      "stable": true,
+      "bytes": 3133
+    },
+    "evidence_query": {
+      "stable": true,
+      "bytes": 36834
+    },
+    "dose_field_light": {
+      "stable": true,
+      "bytes": 3606
+    },
+    "l3_cases": {
+      "stable": true,
+      "bytes": 6243
+    },
+    "report": {
+      "stable": true,
+      "bytes": 1873
+    }
+  },
+  "worst_case": {
+    "case": "dose_field_light",
+    "p95_ms": 4.336
+  },
+  "passed": true
+}
