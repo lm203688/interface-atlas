@@ -24,9 +24,13 @@ jobs:
           pip install -e . pytest
       - name: Run tests
         run: python -m pytest tests -q
+      - name: SBOM 一致性（CycloneDX 1.5，零漂移）
+        run: python scripts/generate_sbom.py --check
+      - name: SLO 基准（P95 < 200ms + 100% 确定性）
+        run: python benchmarks/latency.py --check
       - name: Credential scan（凭证不得入库）
         run: |
-          if grep -rEn "ghp_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN.*PRIVATE KEY" \
+          if grep -rEn "ghp_[A-Za-z0-9]{20,}|github_pat_|AKIA[0-9A-Z]{16}|-----BEGIN.*PRIVATE KEY" \
               --exclude-dir=.git --exclude=test.yml . ; then
             echo "::error::疑似凭证入库"; exit 1
           fi
