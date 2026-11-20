@@ -25,7 +25,7 @@
 MIT License.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 from . import calibration, dosimetry, light_field, mc_light, paramcheck  # noqa: F401
 from . import ultrasound_field, us_validation  # noqa: F401
