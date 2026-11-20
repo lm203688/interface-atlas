@@ -133,6 +133,18 @@ curl -s -X POST http://127.0.0.1:7100/api/claim \
 
 端点：`/api/claim` `/api/paramcheck` `/api/doseaudit` `/api/dosefield` `/api/evidence` `/api/report` `/api/headmodels` `/api/l3cases` `/api/meta`。每个响应都带证据指纹、库版本与边界声明，可被外部审计。判定内核与 CLI 完全同源，服务层只做搬运与呈现。
 
+## 生产级工程件（v1.1）
+
+| 件 | 文件 | 用途 |
+|---|---|---|
+| 安全 | [`SECURITY.md`](SECURITY.md) / [`MCP_SECURITY_REVIEW.md`](MCP_SECURITY_REVIEW.md) | 三入口威胁模型、披露政策、10 工具逐项过检（含未做项） |
+| 供应链 | [`sbom.json`](sbom.json) / `scripts/generate_sbom.py` | CycloneDX 1.5，确定性生成，`--check` 入 CI |
+| 合规 | [`COMPLIANCE.md`](COMPLIANCE.md) | EU AI Act Art.50 / Art.4 / Art.5 逐条映射 + 可出示证据包 |
+| 可靠性 | [`benchmarks/baseline.json`](benchmarks/baseline.json) | 最差 P95 4.34 ms（上限 200 ms）、8 类响应 100% 确定性 |
+| 发布 | [`RELEASING.md`](RELEASING.md) | tag → 签名 → 发布说明；签名需维护者本人 GPG/sigstore 密钥 |
+
+**诚实边界**：判定内核与三入口零第三方依赖，但完整包声明 3 个直接依赖（numpy / pandas / matplotlib），SBOM 如实列出；MCP 已封堵未知参数与 `n`/`limit` 资源耗尽面，但整行请求字节上限、速率限制、输出 schema 声明仍未做（见过检清单）；签名 tag、Zenodo DOI、PyPI 发布尚未完成。
+
 ## 接收器面板（13 个基因）
 
 | 模态 | 基因 | 接收器 |
