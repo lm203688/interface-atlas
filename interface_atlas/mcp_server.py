@@ -60,7 +60,7 @@ _TOOLS: list[dict] = [
             "按《物理干预剂量报告规范 v1》（社区草案）审计一份剂量报告的完整性："
             "四层剂量本体 T1 设备/T2 界面/T3 靶区/T4 解剖，输出 completeness_score 与"
             "可复现性四档（not_reproducible / underdetermined / reproducible_with_model /"
-            " reproducible_from_report）。"
+            " reproducible_from_report）。社区草案规范，非监管结论。"
         ),
         "inputSchema": {
             "type": "object",
@@ -77,6 +77,7 @@ _TOOLS: list[dict] = [
             "L2 剂量场引擎（科研降阶代理）：给定设备/组织参数计算靶区真实剂量。"
             "light=光 P1 扩散；ultrasound=超声聚焦+颅骨衰减；electric=四层球谐电场。"
             "设备参数≠靶区剂量：同一外部参数在不同解剖下靶区可差数倍。"
+            "科研降阶代理，非临床处方与监管结论。"
         ),
         "inputSchema": {
             "type": "object",
@@ -89,7 +90,8 @@ _TOOLS: list[dict] = [
     },
     {
         "name": "evidence_query",
-        "description": "查询物理干预证据库（103 条，A/B/C/D 分级，来源经 CrossRef/NCBI 核验）。支持模态/基因/细胞/等级/人体证据/关键词过滤。",
+        "description": "查询物理干预证据库（103 条，A/B/C/D 分级，来源经 CrossRef/NCBI 核验）。"
+                       "支持模态/基因/细胞/等级/人体证据/关键词过滤；只读，单次返回上限 500 条。",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -102,12 +104,14 @@ _TOOLS: list[dict] = [
     },
     {
         "name": "headmodel_list",
-        "description": "列出内置解剖代理体模及许可门禁结论（fail-closed：CC BY-NC/DUA 一律拒绝商用）。",
+        "description": "列出内置解剖代理体模及许可门禁结论（fail-closed：CC BY-NC/DUA 一律拒绝商用）。"
+                       "内置体模为解析/统计代理，非真实患者影像。",
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
         "name": "headmodel_sample",
-        "description": "群体解剖抽样（固定 seed 可复现；illustrative 示例分布，非经验值），为个体化剂量区间供数。",
+        "description": "群体解剖抽样（固定 seed 可复现；illustrative 示例分布，非经验值、非真实患者影像），"
+                       "为个体化剂量区间供数；单次 n 上限 1000。",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -118,7 +122,8 @@ _TOOLS: list[dict] = [
     },
     {
         "name": "headmodel_license",
-        "description": "按 fail-closed 许可门禁校验指定体模是否允许（商）用。",
+        "description": "按 fail-closed 许可门禁校验指定体模是否允许（商）用。"
+                       "仅作工程门禁，非法律意见，不替代数据使用协议。",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -129,12 +134,14 @@ _TOOLS: list[dict] = [
     },
     {
         "name": "l3_cases",
-        "description": "L3 剂量-效应种子基准案例（4 个一手案例，每条带可证伪推翻条件；多指标协议，拒绝聚合总分）。",
+        "description": "L3 剂量-效应种子基准案例（4 个一手案例，每条带可证伪推翻条件；多指标协议，拒绝聚合总分）。"
+                       "模拟剂量≠体内剂量≠效应，不可直接推断疗效。",
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
         "name": "atlas_report",
-        "description": "完整评估旅程：一句宣称 → 四级判定 + 相关证据（一次调用跑通『宣称→证据』链）。",
+        "description": "完整评估旅程：一句宣称 → 四级判定 + 相关证据（一次调用跑通『宣称→证据』链）。"
+                       "仅作科研初筛，不可用于临床决策；文本上限 4000 字符。",
         "inputSchema": {
             "type": "object",
             "properties": {"text": {"type": "string"}},
@@ -142,6 +149,30 @@ _TOOLS: list[dict] = [
         },
     },
 ]
+
+# 统一拒绝未知键：声明在 schema，执行在 _validate_args（不是只写在文档里）。
+for _tool in _TOOLS:
+    _tool["inputSchema"]["additionalProperties"] = False
+
+_TOOL_BY_NAME = {t["name"]: t for t in _TOOLS}
+
+
+def _validate_args(name: str, arguments: object) -> str | None:
+    """NSA/OWASP MCP 输入校验：拒绝未知参数与非对象入参。
+
+    数量/长度上限在 service.py 共享内核实施，三入口一致；这里只管参数名白名单。
+    """
+    tool = _TOOL_BY_NAME.get(name)
+    if tool is None:
+        return None  # 未知工具由 _DISPATCH 分支处理，保持原有错误语义
+    if not isinstance(arguments, dict):
+        return "arguments 须为 JSON 对象"
+    allowed = set(tool["inputSchema"].get("properties", {}))
+    unknown = sorted(set(arguments) - allowed)
+    if unknown:
+        return f"未知参数 {', '.join(unknown)}；该工具仅接受 {', '.join(sorted(allowed)) or '（无参数）'}"
+    return None
+
 
 _DISPATCH = {
     "claim_check": lambda a: service.claim_check(a["text"]),
@@ -198,6 +229,12 @@ def handle_message(msg: dict) -> dict | None:
             return {"jsonrpc": "2.0", "id": req_id, "result": {
                 "content": [{"type": "text",
                              "text": f"未知工具 {name}；可用：{', '.join(_DISPATCH)}"}],
+                "isError": True,
+            }}
+        bad = _validate_args(name, params.get("arguments", {}))
+        if bad:
+            return {"jsonrpc": "2.0", "id": req_id, "result": {
+                "content": [{"type": "text", "text": f"参数错误：{bad}"}],
                 "isError": True,
             }}
         try:
