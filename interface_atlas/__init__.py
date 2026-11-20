@@ -21,11 +21,13 @@
   service      —— 产品化服务层：CLI / Web API / MCP 三入口共享内核（v1.0）
   webapp       —— 零依赖本地 Web 服务（REST API + 交互站，仅 127.0.0.1）
   mcp_server   —— MCP 服务：判定内核以 MCP 工具形式暴露给 AI 代理
+  harvest      —— P1 证据产线：LLM 候选 → 三态机器裁判 → 人审队列（不自动入库）
+  harvest_validation —— 产线独立验证：独立解析器交叉核对 + I/O 替换三态检验
 
 MIT License.
 """
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 from . import calibration, dosimetry, light_field, mc_light, paramcheck  # noqa: F401
 from . import ultrasound_field, us_validation  # noqa: F401
