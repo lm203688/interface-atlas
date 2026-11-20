@@ -1,0 +1,89 @@
+{
+  "overall_passed": true,
+  "gated_checks": [
+    "source_parser_crosscheck",
+    "fingerprint_tamper",
+    "no_auto_commit",
+    "tri_state"
+  ],
+  "checks": {
+    "source_parser_crosscheck": {
+      "rows": [
+        {
+          "url": "https://doi.org/10.1016/j.bbi.2023.12.008",
+          "independent": "doi",
+          "module": "doi",
+          "match": true
+        },
+        {
+          "url": "doi:10.1111/psyp.13933",
+          "independent": "doi",
+          "module": "doi",
+          "match": true
+        },
+        {
+          "url": "10.1126/sciadv.abh2169",
+          "independent": "doi",
+          "module": "doi",
+          "match": true
+        },
+        {
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12326686/",
+          "independent": "pmc",
+          "module": "pmc",
+          "match": true
+        },
+        {
+          "url": "https://example.org/guide",
+          "independent": "unsupported",
+          "module": "unsupported",
+          "match": true
+        }
+      ],
+      "passed": true
+    },
+    "fingerprint_tamper": {
+      "canonical_order_invariant": true,
+      "tamper_changes_fingerprint": true,
+      "sha256_length": true,
+      "passed": true
+    },
+    "no_auto_commit": {
+      "evidence_bytes_unchanged": true,
+      "evidence_rows_unchanged": true,
+      "auto_committed": 0,
+      "queued_for_human": 1,
+      "passed": true
+    },
+    "tri_state": {
+      "rows": {
+        "ok": {
+          "injected": "ok",
+          "want": "verified",
+          "got": "verified",
+          "match": true
+        },
+        "not_found": {
+          "injected": "not_found",
+          "want": "refuted",
+          "got": "refuted",
+          "match": true
+        },
+        "rate_limited": {
+          "injected": "rate_limited",
+          "want": "unverified",
+          "got": "unverified",
+          "match": true
+        },
+        "error": {
+          "injected": "error",
+          "want": "unverified",
+          "got": "unverified",
+          "match": true
+        }
+      },
+      "passed": true
+    }
+  },
+  "boundary": "本验证用独立实现与 I/O 替换交叉核对；不证明候选条目的科学真伪，只证明产线按声明分流。"
+}
