@@ -15,6 +15,31 @@ BOUNDARY = (
     "自发报告≠发生率；RNA≠膜蛋白；设备参数≠靶区剂量。"
 )
 
+# 资源耗尽防护边界：三入口（CLI/MCP/Web）共享，避免"修一个门、另两个还开着"。
+# 这些是数量上限，不是语义校验——语义错误仍由内核 fail-fast。
+MAX_TEXT_CHARS = 4000
+MAX_EVIDENCE_LIMIT = 500
+MAX_SAMPLE_N = 1000
+
+
+def _bounded_text(text: str) -> str:
+    if not isinstance(text, str):
+        raise ValueError("宣称文本须为字符串")
+    s = text.strip()
+    if not s:
+        raise ValueError("宣称文本不能为空")
+    if len(s) > MAX_TEXT_CHARS:
+        raise ValueError(f"宣称文本过长（>{MAX_TEXT_CHARS} 字符）")
+    return s
+
+
+def _clamp_int(value, *, lo: int, hi: int, default: int) -> int:
+    try:
+        v = int(value)
+    except (TypeError, ValueError):
+        v = default
+    return max(lo, min(hi, v))
+
 
 def meta() -> dict:
     """服务元信息：版本 + 证据指纹 + 边界声明（每次响应必带）."""
@@ -34,9 +59,7 @@ def _wrap(payload: dict) -> dict:
 
 def claim_check(text: str) -> dict:
     """宣称 → 四级判定（SUPPORTED/REFUTED/EXCEEDED/NO_EVIDENCE）+ 推翻条件."""
-    if not text or not text.strip():
-        raise ValueError("宣称文本不能为空")
-    return _wrap(claimcheck.check(text.strip()))
+    return _wrap(claimcheck.check(_bounded_text(text)))
 
 
 def param_check(payload: dict, source_id: str = "") -> dict:
@@ -63,7 +86,8 @@ def evidence_query(modality: str | None = None, gene: str | None = None,
     rows = evidence.load()
     rows = evidence.query(rows, modality=modality, gene=gene, cell_type=cell_type,
                           grade_min=grade_min, human_only=human_only, keyword=keyword)
-    return _wrap({"count": len(rows), "rows": rows[: int(limit)]})
+    capped = _clamp_int(limit, lo=1, hi=MAX_EVIDENCE_LIMIT, default=50)
+    return _wrap({"count": len(rows), "rows": rows[:capped], "limit_applied": capped})
 
 
 def dose_field(modality: str, params: dict) -> dict:
@@ -135,10 +159,11 @@ def headmodel_list() -> dict:
 
 def headmodel_sample(n: int = 100, seed: int = 20261119) -> dict:
     """群体解剖抽样（illustrative 示例分布，固定 seed 可复现）."""
-    models = anatomy.population_sample(n=int(n), seed=int(seed))
+    capped = _clamp_int(n, lo=1, hi=MAX_SAMPLE_N, default=100)
+    models = anatomy.population_sample(n=capped, seed=int(seed))
     skulls = [m.skull_thickness_mm() for m in models]
     return _wrap({
-        "n": len(models), "seed": int(seed),
+        "n": len(models), "seed": int(seed), "limit_applied": capped,
         "skull_thickness_mm": {"min": min(skulls), "max": max(skulls),
                                "mean": sum(skulls) / len(skulls)},
         "note": "示例分布非经验值；真实群体统计用 load_population_stats() 替换。",
@@ -160,12 +185,13 @@ def l3_cases() -> dict:
 
 def report(text: str) -> dict:
     """完整评估旅程：宣称 → 判定 → 剂量完整性 → 相关证据（一次请求跑通）."""
-    claim = claimcheck.check(text.strip())
+    s = _bounded_text(text)
+    claim = claimcheck.check(s)
     matched = claim.get("matched_ids", []) + claim.get("counter_ids", [])
     rows = evidence.load()
     related = [r for r in rows if r.get("id") in matched][:10]
     return _wrap({
-        "claim": text.strip(),
+        "claim": s,
         "verdict": claim,
         "related_evidence": related,
         "journey": ["claim", "evidence", "dose_audit", "dose_field", "l3_bench"],
