@@ -145,6 +145,29 @@ curl -s -X POST http://127.0.0.1:7100/api/claim \
 
 **诚实边界**：判定内核与三入口零第三方依赖，但完整包声明 3 个直接依赖（numpy / pandas / matplotlib），SBOM 如实列出；MCP 已封堵未知参数与 `n`/`limit` 资源耗尽面，但整行请求字节上限、速率限制、输出 schema 声明仍未做（见过检清单）；签名 tag、Zenodo DOI、PyPI 发布尚未完成。
 
+## P1 证据产线（v1.2）
+
+```
+LLM 抽取候选 → schema 校验 → 三重去重 → 来源三态核验 → 人审签字 → 维护者合并
+```
+
+| 核验态 | 触发条件 | 去向 |
+|---|---|---|
+| `verified` | DOI/PMID/PMCID 公开 API 命中 | `ready_for_review`（**仍需人工核对原文**） |
+| `refuted` | 来源明确 404 | `rejected` |
+| `unverified` | 限流（实测 CrossRef 429）/ 离线 / 机构页无公开接口 | `needs_manual_verification` |
+
+```bash
+# 先离线查 schema 与去重（不发网络请求）
+python -m interface_atlas.cli harvest --input candidates.json --offline
+# 在线核验来源，报告写入人审队列
+python -m interface_atlas.cli harvest --input candidates.json --save data/harvest_review_queue.json
+# 产线独立验证（I/O 替换，零真实请求）
+python -m interface_atlas.cli harvest --validate
+```
+
+**永不自动入库**：`auto_committed` 恒为 0，机器裁判不能替代人对原文的核对。产线工程已就绪，但证据库仍是 103 条——扩到 300+ 需要真实文献与人工签字，不靠 AI 注水。贡献教程见 [`CONTRIBUTING.md`](CONTRIBUTING.md)，决策边界见 [`GOVERNANCE.md`](GOVERNANCE.md)，公开路线见 [`ROADMAP.md`](ROADMAP.md)。
+
 ## 接收器面板（13 个基因）
 
 | 模态 | 基因 | 接收器 |
