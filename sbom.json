@@ -1,0 +1,119 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "pkg:pypi/pandas@>=2.0",
+      "name": "pandas",
+      "properties": [
+        {
+          "name": "interface-atlas:usage",
+          "value": "受体表达面板：CSV 读取"
+        },
+        {
+          "name": "interface-atlas:main-verdict-chain",
+          "value": "false"
+        },
+        {
+          "name": "interface-atlas:license-verification",
+          "value": "pending-upstream-check"
+        }
+      ],
+      "purl": "pkg:pypi/pandas@>=2.0",
+      "scope": "required",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/matplotlib@>=3.7",
+      "name": "matplotlib",
+      "properties": [
+        {
+          "name": "interface-atlas:usage",
+          "value": "受体热图生成（可选绘图）"
+        },
+        {
+          "name": "interface-atlas:main-verdict-chain",
+          "value": "false"
+        },
+        {
+          "name": "interface-atlas:license-verification",
+          "value": "pending-upstream-check"
+        }
+      ],
+      "purl": "pkg:pypi/matplotlib@>=3.7",
+      "scope": "required",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/numpy@>=1.24",
+      "name": "numpy",
+      "properties": [
+        {
+          "name": "interface-atlas:usage",
+          "value": "L2 数值引擎：光 MC 金标准、电场球谐求解、剂量场运算"
+        },
+        {
+          "name": "interface-atlas:main-verdict-chain",
+          "value": "true"
+        },
+        {
+          "name": "interface-atlas:license-verification",
+          "value": "pending-upstream-check"
+        }
+      ],
+      "purl": "pkg:pypi/numpy@>=1.24",
+      "scope": "required",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/nibabel",
+      "name": "nibabel",
+      "properties": [
+        {
+          "name": "interface-atlas:usage",
+          "value": "NIfTI 体模导入（anatomy.py 延迟 import）"
+        },
+        {
+          "name": "interface-atlas:main-verdict-chain",
+          "value": "false"
+        },
+        {
+          "name": "interface-atlas:license-verification",
+          "value": "pending-upstream-check"
+        }
+      ],
+      "purl": "pkg:pypi/nibabel",
+      "scope": "optional",
+      "type": "library"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "bom-ref": "pkg:pypi/interface-atlas@1.1.0",
+      "description": "非药物接口层：物理信号接收器图谱 + 证据剂量图谱",
+      "name": "interface-atlas",
+      "properties": [
+        {
+          "name": "interface-atlas:verdict-core-third-party-deps",
+          "value": "0"
+        },
+        {
+          "name": "interface-atlas:note",
+          "value": "判定内核与三入口零第三方依赖；完整包依赖见 components。"
+        }
+      ],
+      "type": "application",
+      "version": "1.1.0"
+    },
+    "timestamp": "2026-11-20T00:00:00Z",
+    "tools": [
+      {
+        "name": "generate_sbom.py",
+        "vendor": "interface-atlas",
+        "version": "1.0"
+      }
+    ]
+  },
+  "serialNumber": "urn:uuid:eb8d50b8-2e28-c0b9-fe01-ebfb9162fb0c",
+  "specVersion": "1.5",
+  "version": 1
+}
