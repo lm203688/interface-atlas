@@ -9,6 +9,7 @@ from . import __version__, calibration, claimcheck, dosimetry, evidence, link, m
 from . import light_field, ultrasound_field as usfield, us_validation
 from . import electric_field as esfield, es_validation
 from . import anatomy, dose_features, l3bench, l3_validation
+from . import harvest, harvest_validation, l1_clauses
 
 
 def _print_rows(rows: list[dict], columns: list[str]) -> None:
@@ -514,6 +515,73 @@ def _l3bench(args: argparse.Namespace) -> int:
     return 1
 
 
+def _harvest(args: argparse.Namespace) -> int:
+    """P1 证据产线：候选裁判 / 独立验证。永不自动入库。"""
+    if args.validate:
+        rep = harvest_validation.build_report()
+        print(harvest_validation.render_report(rep))
+        if args.as_json:
+            print(json.dumps(rep, ensure_ascii=False, indent=2, default=str))
+        return 0 if rep["overall_passed"] else 1
+    if not args.input:
+        print("需 --input 提供候选 JSON 文件，或用 --validate 跑产线独立验证")
+        return 1
+    candidates = json.loads(Path(args.input).read_text(encoding="utf-8"))
+    if not isinstance(candidates, list):
+        print("候选文件须为 JSON 数组")
+        return 1
+    rep = harvest.process_candidates(candidates, offline=args.offline)
+    print(harvest.render(rep))
+    if args.save:
+        p = harvest.save_review_queue(rep, args.save)
+        print(f"人审队列已写入：{p}")
+    if args.as_json:
+        print(json.dumps(rep, ensure_ascii=False, indent=2, default=str))
+    return 0
+
+
+def _l1clauses(args: argparse.Namespace) -> int:
+    """L1 规范可引用条文注册表：列出 / 引用单条 / 核对 / 重建。"""
+    if args.save:
+        path = l1_clauses.save_registry()
+        ok, _ = l1_clauses.check_registry(path)
+        print(f"注册表已重建：{path}")
+        print(f"sha256={l1_clauses.fingerprint(path)}")
+        return 0 if ok else 1
+    if args.check:
+        ok, msg = l1_clauses.check_registry()
+        print(("PASS " if ok else "FAIL ") + msg)
+        if ok:
+            print(f"sha256={l1_clauses.fingerprint()}")
+        return 0 if ok else 1
+    if args.cite:
+        item = l1_clauses.find_clause(args.cite)
+        if item is None:
+            print(f"未找到条文 ID：{args.cite}（用 --list 查看全部）")
+            return 2
+        if args.as_json:
+            print(json.dumps(item, ensure_ascii=False, indent=2))
+        else:
+            print(l1_clauses.format_clause(item))
+        return 0
+    data = json.loads(l1_clauses.REGISTRY_PATH.read_text(encoding="utf-8"))
+    if args.list:
+        if args.as_json:
+            print(json.dumps(data, ensure_ascii=False, indent=2))
+        else:
+            for item in data["clauses"] + data["rules"]:
+                print(l1_clauses.format_clause(item))
+            print(f"共 {len(data['clauses'])} 条条文 + {len(data['rules'])} 条判定规则；"
+                  f"sha256={l1_clauses.fingerprint()}")
+        return 0
+    print(f"L1 条文注册表：{data['counts']['clauses']} 条条文 + "
+          f"{data['counts']['rules']} 条判定规则")
+    print(f"规范版本 {data['spec_version']}；代码锚点 {data['citation']['version_pin']}")
+    print(f"sha256={l1_clauses.fingerprint()}")
+    print("用 --list / --cite <ID> / --check / --save 查看或维护；引用格式见 CITING_L1.md")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="interface-atlas", description="非药物接口层：接收器图谱 + 证据剂量图谱")
     p.add_argument("--version", action="version", version=__version__)
@@ -676,6 +744,22 @@ def build_parser() -> argparse.ArgumentParser:
     lb.add_argument("--file", help="提交 JSON 路径（submit 用）")
     lb.add_argument("--as-json", dest="as_json", action="store_true")
     lb.set_defaults(func=_l3bench)
+
+    hv = sub.add_parser("harvest", help="P1 证据产线：候选裁判（不自动入库）/ 独立验证")
+    hv.add_argument("--input", help="候选 JSON 数组文件")
+    hv.add_argument("--offline", action="store_true", help="不联网，仅做 schema/去重裁判")
+    hv.add_argument("--save", help="把裁判报告写入人审队列 JSON 路径")
+    hv.add_argument("--validate", action="store_true", help="跑产线独立验证（不需要 --input）")
+    hv.add_argument("--as-json", dest="as_json", action="store_true")
+    hv.set_defaults(func=_harvest)
+
+    lc = sub.add_parser("l1clauses", help="L1 规范可引用条文：列出 / 引用单条 / 核对 / 重建")
+    lc.add_argument("--list", action="store_true", help="打印全部条文与判定规则")
+    lc.add_argument("--cite", metavar="ID", help="打印单条条文的引用卡，如 IA-L1-PBM-T2-applicator_distance")
+    lc.add_argument("--check", action="store_true", help="核对注册表与权威字段源 DOSE_SPEC 未脱节")
+    lc.add_argument("--save", action="store_true", help="从 DOSE_SPEC 重建注册表（权威源变更时）")
+    lc.add_argument("--as-json", dest="as_json", action="store_true")
+    lc.set_defaults(func=_l1clauses)
     return p
 
 
