@@ -14,6 +14,7 @@
 | `claimcheck` | 一句设备宣称，证据到底支不支持 | A2 证据库 | 四级判定（支持/反驳/超出/无证据）+ 命中证据 ID + 推翻条件 |
 | `paramcheck` | 一份参数报告写得够不够资格谈复现 | 物理参数规格（光/电/声/机械） | 五级判定（完整/不足/越界/无证据/部分）+ 硬阈值核对 + 推翻条件 |
 | `dosimetry` | 一份剂量报告缺什么、能不能复现、能不能交给计算引擎补算 | **剂量报告规范 v1**（四层剂量本体，光/电/声/机械 + 代谢附录） | completeness_score + 四档可复现性判定 + `schema/dose_report_v1.schema.json` + 字段缺失图谱 |
+| `l1_clauses` | 外部怎么逐条引用这份规范 | 由 `dosimetry.DOSE_SPEC` 确定性编译 + 真实证据库出处 | **48 条文 + 5 规则**，稳定 ID + `schema/l1_clauses_v1.json` + `CITING_L1.md` |
 | `light_field` | 设备/组织参数 → 靶区真实剂量场（光模态） | P1 扩散近似 + Farrell 1992 偶极子 + 外推边界 | 深度分辨光通量/吸收场、闭式逆设计、可微接口、适用性告警 |
 | `mc_light` | 独立金标准校验剂量场、量化代理误差 | 1D 多层 Monte Carlo（numpy 向量化） | Prahl 基准验证、P1 代理误差测量、解剖敏感性实验 |
 | `calibration` | 剂量点估计的偏差校正 + 可信区间 | split conformal prediction（三段分离，有限样本覆盖保证） | 去偏点估计、(1−α) 覆盖区间、可证伪的覆盖率/反证报告 |
@@ -167,6 +168,18 @@ python -m interface_atlas.cli harvest --validate
 ```
 
 **永不自动入库**：`auto_committed` 恒为 0，机器裁判不能替代人对原文的核对。产线工程已就绪，但证据库仍是 103 条——扩到 300+ 需要真实文献与人工签字，不靠 AI 注水。贡献教程见 [`CONTRIBUTING.md`](CONTRIBUTING.md)，决策边界见 [`GOVERNANCE.md`](GOVERNANCE.md)，公开路线见 [`ROADMAP.md`](ROADMAP.md)。
+
+## L1 条文注册表与外部引用（v1.3）
+
+规范正文若只能被笼统引用，就无法积累"领域依赖度"。本版把 `dosimetry.DOSE_SPEC` 编译成可逐条引用的条文注册表：**48 条条文 + 5 条判定规则**，每条有稳定 ID（以语义字段名为锚，新增字段不使旧 ID 漂移）、真实出处标注与可核对指纹。
+
+```bash
+python -m interface_atlas.cli l1clauses --check                              # 核对注册表未与 DOSE_SPEC 脱节
+python -m interface_atlas.cli l1clauses --cite IA-L1-PBM-T2-applicator_distance  # 单条引用卡
+python -m interface_atlas.cli l1clauses --list                               # 全部条文
+```
+
+引用格式、BibTeX、版本冻结与变更规则见 [`CITING_L1.md`](CITING_L1.md)；机器可读注册表见 [`schema/l1_clauses_v1.json`](schema/l1_clauses_v1.json)。**诚实边界**：每条挂的出处仅说明该字段"为何必要"，不代表字段被这些文献验证，更不构成疗效证据。
 
 ## 接收器面板（13 个基因）
 
