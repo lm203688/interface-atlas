@@ -23,7 +23,8 @@
 | `electric_field` | 电流 + 电极 → 靶区电场剂量（电模态） | 四层同心球准静态球谐解析解（Rush-Driscoll 基准） | 靶区 E(V/m)、闭式逆设计、实践窗口 advisory 标注（非监管硬线） |
 | `es_validation` | 电场剂量场的独立校验 | 单层球谐矩阵解 vs 级数求和闭式 + 可证伪性质 | 7 项验证门报告、近场截断单列 report、电导率缩放反比性 |
 | `anatomy` | 个体化解剖：设备参数到靶区剂量之间缺的那一层 | 头模数据契约 + 内置代理体模 + NIfTI/lead-field 导入适配器 + 群体抽样 | 带 DOI/许可溯源的 HeadModel、CC BY-NC/DUA 商用门禁、可复现群体解剖 |
-| `dose_features` | 给 L3 基准供数：剂量场到底该怎么描述 | 三模态多指标抽取 + 数值场体积分钩子 | 峰值+衰减+穿透+聚焦性+覆盖向量，逐项标 analytic/proxy/unavailable |
+| `dose_features` | 给 L3 基准供数：剂量场到底该怎么描述 | 三模态多指标抽取 + 真解全指标抽取 | 峰值+衰减+穿透+聚焦性+覆盖向量，逐项标 analytic/proxy/unavailable |
+| `field_import` | 外部真解怎么进我们的口径 | SimNIBS NIfTI / k-Wave MAT(HDF5) / 开放 NPZ（可选依赖优雅降级） | `NumericField`（显式单位+各向异性体素）→ 全指标；不猜单位、不复制数据 |
 | `l3bench` / `l3_validation` | 剂量-效应公开基准：能不能比、可不可以证伪 | 三层因果断裂 + 4 个一手案例 + 独立验证 | 多指标评测协议（拒绝单一 MAE）、每案带推翻条件、无聚合总分 |
 
 > **v0.4 战略转向**：项目从「证据审计工具」升级为「物理干预剂量学操作系统」的 L1 层。放疗靠 ICRU 报告标准 + DICOM-RT + TPS 成为精确医学；物理干预仍缺这一层。详见 [`DOSE_REPORTING_SPEC.md`](DOSE_REPORTING_SPEC.md) 与项目战略文档。`paramcheck`（判决）与 `dosimetry`（完整性诊断）正交并存，前者不放宽。
@@ -180,6 +181,19 @@ python -m interface_atlas.cli l1clauses --list                               # �
 ```
 
 引用格式、BibTeX、版本冻结与变更规则见 [`CITING_L1.md`](CITING_L1.md)；机器可读注册表见 [`schema/l1_clauses_v1.json`](schema/l1_clauses_v1.json)。**诚实边界**：每条挂的出处仅说明该字段"为何必要"，不代表字段被这些文献验证，更不构成疗效证据。
+
+## 数值真解导入（v1.4，P2）
+
+外部数值场进本包口径的标准化通路：SimNIBS NIfTI / k-Wave MAT(HDF5) / 开放 NPZ → `NumericField` → 真解全指标 → `DoseFeatureVector`。各向异性体素按 `(sx,sy,sz)` 分别处理；穿透/衰减/FWHM 按剖面是否显式选轴分级，不把自动选轴冒充剂量学轴。
+
+```bash
+python -m interface_atlas.cli fieldimport npz field.npz --unit V/m --describe
+python -m interface_atlas.cli fieldimport simnibs E.nii.gz --unit V/m --axis 2 --as-json
+python -m interface_atlas.cli fieldimport kwave p.mat --unit MPa --variable p \
+  --scale 1e-6 --voxel 0.1,0.1,0.2 --axis 2 --modality "focused ultrasound"
+```
+
+三条铁律：**不猜单位**（`--unit` 必填）、**不复制外部数据**（只读路径、计算后弃数组）、**真解 ≠ 体内剂量**。nibabel / h5py 为可选依赖，未装时给明确降级指引（导出 NPZ 再读），不影响其它入口。格式契约与分级表见 [`FIELD_IMPORT.md`](FIELD_IMPORT.md)。
 
 ## 接收器面板（13 个基因）
 
