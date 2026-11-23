@@ -33,7 +33,7 @@ from .dosimetry import (
 
 SCHEMA_NAME = "l1_clauses/v1"
 SPEC_VERSION = "1.0.0"
-PINNED_REF = "v1.3.0"
+PINNED_REF = "v1.4.0"
 
 _ROOT = Path(__file__).resolve().parents[1]
 REGISTRY_PATH = _ROOT / "schema" / "l1_clauses_v1.json"
