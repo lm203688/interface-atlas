@@ -9,7 +9,7 @@ from . import __version__, calibration, claimcheck, dosimetry, evidence, link, m
 from . import light_field, ultrasound_field as usfield, us_validation
 from . import electric_field as esfield, es_validation
 from . import anatomy, dose_features, l3bench, l3_validation
-from . import harvest, harvest_validation, l1_clauses
+from . import harvest, harvest_validation, l1_clauses, field_import
 
 
 def _print_rows(rows: list[dict], columns: list[str]) -> None:
@@ -582,6 +582,63 @@ def _l1clauses(args: argparse.Namespace) -> int:
     return 0
 
 
+def _fieldimport(args: argparse.Namespace) -> int:
+    """P2 真解导入：外部数值场 → NumericField → 全指标 DoseFeatureVector。"""
+    src = args.source
+    unit = args.unit
+    kw = {}
+    if src == "simnibs":
+        f = field_import.from_simnibs_nifti(
+            args.file, field_unit=unit,
+            license_declared=args.license or "", subject_id=args.subject)
+    elif src == "kwave":
+        f = field_import.from_kwave_mat(
+            args.file, field_unit=unit, variable=args.variable,
+            scale=args.scale, voxel_size_cm=_parse_voxel(args.voxel),
+            license_declared=args.license or "", subject_id=args.subject)
+    elif src == "npz":
+        # NPZ 开放契约默认 key 是 'field'；仅当用户显式改过 --variable 才覆盖
+        npz_key = "field" if args.variable == "p" else args.variable
+        f = field_import.from_npz(args.file, field_unit=unit, field_key=npz_key)
+    else:
+        print(f"未知来源 {src!r}；可用 simnibs / kwave / npz")
+        return 2
+
+    if args.describe:
+        print(f.describe())
+        if not args.as_json:
+            return 0
+    try:
+        v = dose_features.from_numeric_field_full(
+            f, modality=args.modality, subject_id=args.subject,
+            axis=(int(args.axis) if args.axis is not None else None))
+        print(dose_features.render(v))
+        if args.as_json:
+            print(json.dumps({"field": {
+                "source_tool": f.source_tool, "source_ref": f.source_ref,
+                "field_key": f.field_key, "unit": f.unit,
+                "voxel_size_cm": list(f.voxel_size_cm),
+                "scale_applied": f.scale_applied,
+                "provenance": f.provenance,
+            }, "features": v.as_dict()}, ensure_ascii=False, indent=2, default=str))
+        return 0
+    except (ValueError, ImportError) as exc:
+        print(f"导入失败：{exc}")
+        return 1
+
+
+def _parse_voxel(text: str | None) -> tuple[float, float, float] | float:
+    """把 '0.1,0.2,0.5' 解析成三元组；单值或 None 走默认。"""
+    if not text:
+        raise ValueError("k-wave 来源必须用 --voxel 提供体素尺寸 cm（文件不含网格间距）")
+    parts = [p.strip() for p in text.split(",")]
+    if len(parts) == 1:
+        return float(parts[0])
+    if len(parts) == 3:
+        return (float(parts[0]), float(parts[1]), float(parts[2]))
+    raise ValueError("--voxel 须为单值或三元逗号分隔（sx,sy,sz），单位 cm")
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="interface-atlas", description="非药物接口层：接收器图谱 + 证据剂量图谱")
     p.add_argument("--version", action="version", version=__version__)
@@ -760,6 +817,22 @@ def build_parser() -> argparse.ArgumentParser:
     lc.add_argument("--save", action="store_true", help="从 DOSE_SPEC 重建注册表（权威源变更时）")
     lc.add_argument("--as-json", dest="as_json", action="store_true")
     lc.set_defaults(func=_l1clauses)
+
+    fi = sub.add_parser("fieldimport", help="P2 真解导入：SimNIBS/k-Wave/NPZ → 全指标剂量场特征")
+    fi.add_argument("source", choices=["simnibs", "kwave", "npz"])
+    fi.add_argument("file", help="场文件路径")
+    fi.add_argument("--unit", required=True, help="场单位（显式声明，如 V/m / MPa / Pa）；本包不猜")
+    fi.add_argument("--subject", default="external", help="样本 ID")
+    fi.add_argument("--license", help="来源数据许可声明（如 CC BY 4.0 / DUA）")
+    fi.add_argument("--variable", default="p", help="场变量名：k-Wave MAT 变量或 NPZ key，默认 p")
+    fi.add_argument("--voxel", help="k-Wave 体素尺寸 cm：单值或 sx,sy,sz（文件不含网格间距）")
+    fi.add_argument("--scale", type=float, default=1.0, help="线性缩放（如 Pa→MPa 传 1e-6），默认 1")
+    fi.add_argument("--modality", default="transcranial electric",
+                    choices=["transcranial electric", "focused ultrasound", "photobiomodulation"])
+    fi.add_argument("--axis", help="剖面轴 0/1/2；省略则自动选轴并标 proxy")
+    fi.add_argument("--describe", action="store_true", help="只描述导入的场元数据，不抽特征")
+    fi.add_argument("--as-json", dest="as_json", action="store_true")
+    fi.set_defaults(func=_fieldimport)
     return p
 
 
