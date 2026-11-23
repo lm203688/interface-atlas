@@ -11,7 +11,7 @@
 
 ```text
 interface-atlas contributors. Physical Intervention Dose Reporting Spec v1
-(interface-atlas L1). Spec version 1.0.0, package v1.3.0.
+(interface-atlas L1). Spec version 1.0.0, package v1.4.0.
 https://github.com/lm203688/interface-atlas
 ```
 
@@ -36,7 +36,7 @@ https://github.com/lm203688/interface-atlas
 
 ```text
 ... 施加器-皮肤距离按 interface-atlas L1 条文 IA-L1-PBM-T2-applicator_distance
-(规范 v1.0.0 / 包 v1.3.0) 报告。
+(规范 v1.0.0 / 包 v1.4.0) 报告。
 ```
 
 机器读取：
@@ -87,10 +87,10 @@ python -m interface_atlas.cli l1clauses --check       # 核对注册表未与权
 版本冻结实现：注册表每次由 `DOSE_SPEC` 确定性编译（键排序 + 固定缩进），`sha256(schema/l1_clauses_v1.json)` 即该版条文的指纹——**引用时同时记录该 sha256，即可精确冻结内容**，不依赖尚未生成的 commit SHA。`--check` 可在任何时刻验证注册库与权威源未脱节。当前指纹：
 
 ```text
-sha256(l1_clauses_v1.json) = 5d2ce89d2c95a5b720617196dfd233cc42dcd62f7c1e13c8f507520ca5e29fb3
+sha256(l1_clauses_v1.json) = c20b491ebddf4a65134003722897c54ab384e04fb1c3f7fe8fb4a6b8d575d581
 ```
 
-维护者签名 tag（见 `RELEASING.md`）后，可改以 `v1.3.0` tag 作为额外锚点。指纹来自权威源编译，条文内容不变则指纹不变。
+维护者签名 tag（见 `RELEASING.md`）后，可改以 `v1.4.0` tag 作为额外锚点。指纹来自权威源编译，条文内容或版本锚点任一变化都会改变指纹。
 
 ## 5. 实证出处的诚实边界
 
