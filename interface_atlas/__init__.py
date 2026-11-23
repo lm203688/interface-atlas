@@ -24,14 +24,16 @@
   harvest      —— P1 证据产线：LLM 候选 → 三态机器裁判 → 人审队列（不自动入库）
   harvest_validation —— 产线独立验证：独立解析器交叉核对 + I/O 替换三态检验
   l1_clauses   —— L1 可引用条文：DOSE_SPEC → 稳定条文 ID + 真实出处注册表（外部引用锚点）
+  field_import —— P2 真解导入：SimNIBS NIfTI / k-Wave MAT(HDF5) / 开放 NPZ → NumericField（显式单位、可选依赖优雅降级）
 
 MIT License.
 """
 
-__version__ = "1.3.0"
+__version__ = "1.4.0"
 
 from . import calibration, dosimetry, light_field, mc_light, paramcheck  # noqa: F401
 from . import ultrasound_field, us_validation  # noqa: F401
 from . import electric_field, es_validation  # noqa: F401
 from . import anatomy, dose_features, l3bench, l3_validation  # noqa: F401
 from . import l1_clauses  # noqa: F401
+from . import field_import  # noqa: F401
