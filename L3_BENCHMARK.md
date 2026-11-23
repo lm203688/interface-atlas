@@ -70,7 +70,7 @@
 **关键诚实点**：
 - 每个指标标 `analytic | proxy | unavailable`；解析引擎不返回完整 3D 场，聚焦性只能是 proxy，绝不冒充数值场体积分。
 - 跨模态峰值单位不同（V/m、MPa、相对光通量），**不做虚假归一化排名**。
-- `from_numeric_field()` 钩子：用户接入 MC/FEM/k-Wave 完整场后，才算真正可信的聚焦体积分（已用"单峰值体素体积占比"解析交叉核对）。
+- `from_numeric_field_full()` + `field_import`：用户把 SimNIBS / k-Wave / NPZ 真解接入后，才算真正可信的聚焦体积分（已用单峰值体素与高斯椭球解析交叉核对）。覆盖体积进 `coverage_volumes_cm3`（cm³），穿透/衰减/FWHM 按是否显式选轴分级——自动选轴只标 proxy，不冒充剂量学轴。导入契约见 `FIELD_IMPORT.md`。
 
 ### 2.2 群体汇总
 
