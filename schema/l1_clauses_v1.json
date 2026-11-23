@@ -1,8 +1,8 @@
 {
   "citation": {
-    "preferred": "interface-atlas contributors. Physical Intervention Dose Reporting Spec v1 (interface-atlas L1), clause <ID>, v1.3.0. https://github.com/lm203688/interface-atlas",
+    "preferred": "interface-atlas contributors. Physical Intervention Dose Reporting Spec v1 (interface-atlas L1), clause <ID>, v1.4.0. https://github.com/lm203688/interface-atlas",
     "rule": "引用单条须写条文 ID 与规范版本；引用整份须写版本与仓库 URL。",
-    "version_pin": "v1.3.0"
+    "version_pin": "v1.4.0"
   },
   "clauses": [
     {
