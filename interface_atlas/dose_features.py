@@ -32,7 +32,8 @@ from typing import Any, Callable, Iterable, Sequence
 
 DISCLAIMER = (
     "DoseFeatureVector 是多指标剂量场描述子，不是疗效预测；"
-    "标注为 proxy 的指标来自解析粗估，不能等同数值场体积分；"
+    "标注为 proxy 的指标来自解析粗估或自动选轴剖面，不能等同严格数值场体积分；"
+    "标注为 analytic 的体积指标来自真解体积分，其准确性仍受来源网格/边界条件约束；"
     "跨模态峰值单位不同，禁止直接横向排名。"
 )
 
@@ -70,6 +71,7 @@ class DoseFeatureVector:
     decay_per_cm: float = float("nan")
     fwhm_cm: float = float("nan")
     coverage_depths_cm: dict[float, float] = field(default_factory=dict)
+    coverage_volumes_cm3: dict[float, float] = field(default_factory=dict)
     focality_proxy: float = float("nan")
     focality_basis: str = ""
     reliability: dict[str, str] = field(default_factory=dict)
@@ -88,6 +90,7 @@ class DoseFeatureVector:
             "decay_per_cm": _r(self.decay_per_cm),
             "fwhm_cm": _r(self.fwhm_cm),
             "coverage_depths_cm": {str(k): _r(v) for k, v in self.coverage_depths_cm.items()},
+            "coverage_volumes_cm3": {str(k): _r(v) for k, v in self.coverage_volumes_cm3.items()},
             "focality_proxy": _r(self.focality_proxy),
             "focality_basis": self.focality_basis,
             "reliability": dict(self.reliability),
@@ -297,6 +300,173 @@ def from_numeric_field(*, modality: str, subject_id: str,
     )
 
 
+def from_numeric_field_full(field: Any, *, modality: str, subject_id: str,
+                            axis: int | None = None,
+                            volume_fracs: Sequence[float] = (0.9, 1.0 / math.e, 0.5, 0.1),
+                            anatomy_source: str = "subject_imaging") -> DoseFeatureVector:
+    """全指标数值场抽取器：从真解算峰值 + 多分位体积 + 沿轴穿透/衰减/FWHM.
+
+    与 :func:`from_numeric_field` 的区别
+    -----------------------------------
+    旧钩子只算峰值与半高体积，穿透/衰减/FWHM 全 unavailable。本抽取器补齐全
+    指标——但**诚实按轴**：3D 场没有天然"深度轴"，穿透深度/衰减/FWHM 只是在
+    某条过峰值的 1D 剖面上定义：
+
+    * ``axis`` 由调用方显式给定（0/1/2）→ 这三项标 ``analytic``（剖面上严格
+      计算），并在 basis 里写明是哪根轴。
+    * ``axis=None`` → 自动选半高体积跨度最长的轴，三项标 ``proxy``（自动选轴
+      不是剂量学轴，仅供粗看），basis 里写明自动选择。
+    * 峰值在轴边界或剖面无交点 → 该项 ``unavailable``，不编造。
+
+    体积分（覆盖体积/聚焦性）不依赖轴，始终按各向异性体素 ``sx*sy*sz`` 严格
+    计算，标 ``analytic``。多分位体积写入 ``coverage_volumes_cm3``（新字段），
+    不再污染 `coverage_depths_cm` 的深度语义。
+
+    ``field`` 为 :class:`field_import.NumericField`（鸭子类型：需有 grid /
+    unit / voxel_size_cm / source_tool / source_ref / warnings / provenance）。
+    """
+    try:
+        import numpy as np  # type: ignore
+    except ImportError as exc:  # pragma: no cover
+        raise ImportError("from_numeric_field_full 需要 numpy") from exc
+
+    grid = np.asarray(field.grid, dtype=float)
+    if grid.ndim != 3:
+        raise ValueError("NumericField.grid 须为 3D")
+    vox = tuple(float(v) for v in field.voxel_size_cm)
+    if len(vox) != 3 or any(v <= 0 for v in vox):
+        raise ValueError("voxel_size_cm 须为三元正数组")
+    finite = grid[np.isfinite(grid)]
+    if finite.size == 0:
+        raise ValueError("场数据全为非有限值")
+
+    peak = float(finite.max())
+    flat_idx = int(np.argmax(grid))
+    peak_idx = tuple(int(x) for x in np.unravel_index(flat_idx, grid.shape))
+    vox_vol = vox[0] * vox[1] * vox[2]
+    total_vol = float(grid.size) * vox_vol
+
+    coverage_vol: dict[float, float] = {}
+    for frac in volume_fracs:
+        n = int((finite >= frac * peak).sum())
+        coverage_vol[round(float(frac), 6)] = n * vox_vol
+
+    half_frac = 0.5
+    half_vol = coverage_vol.get(half_frac)
+    if half_vol is None:
+        half_vol = float((finite >= half_frac * peak).sum()) * vox_vol
+    foc = half_vol / total_vol if total_vol > 0 else float("nan")
+    axis_basis = "半高体积 cm3 / 总体积 cm3（各向异性体素体积分）"
+
+    def axis_profile(ax: int) -> Any:
+        """过峰值沿 ax 轴的 1D 剖面：固定另两轴索引于峰值。"""
+        idx = list(peak_idx)
+        idx[ax] = slice(None)
+        return np.asarray(grid[tuple(idx)], dtype=float)
+
+    # 选轴：显式给定 → analytic；自动选跨度最长轴 → proxy
+    auto_axis = False
+    if axis is None:
+        spans = []
+        for ax in range(3):
+            prof_ax = axis_profile(ax)
+            above = np.asarray(prof_ax >= half_frac * peak, dtype=bool)
+            spans.append(int(above.sum()))
+        axis = int(np.argmax(spans))
+        auto_axis = True
+    if axis not in (0, 1, 2):
+        raise ValueError("axis 须为 0 / 1 / 2 或 None")
+    profile_level = "proxy" if auto_axis else "analytic"
+    cadence = vox[axis]
+
+    # 过峰值的 1D 剖面
+    prof = axis_profile(axis)
+    pk_i = peak_idx[axis]
+
+    def cross(side: int, frac: float) -> float | None:
+        """从峰值往 side 方向找首次降到 peak*frac 的距离 cm（线性插值）。"""
+        target = peak * frac
+        i = pk_i
+        while 0 <= i + side < prof.size:
+            j = i + side
+            a, b = prof[i], prof[j]
+            if not (math.isfinite(a) and math.isfinite(b)):
+                return None
+            if a >= target >= b:
+                if a == b:
+                    return abs(j - pk_i) * cadence
+                t = (a - target) / (a - b)
+                cross_pos = i + side * t  # 沿 side 方向插值，负向不能写成 i+t
+                return abs(cross_pos - pk_i) * cadence
+            i = j
+        return None
+
+    d_lo = cross(-1, 1.0 / math.e)
+    d_hi = cross(+1, 1.0 / math.e)
+    penetr = max((d for d in (d_lo, d_hi) if d is not None), default=float("nan"))
+
+    f_lo = cross(-1, half_frac)
+    f_hi = cross(+1, half_frac)
+    fwhm = (f_lo + f_hi) if (f_lo is not None and f_hi is not None) else float("nan")
+
+    # 衰减率：用深侧 0.9→1/e 两点对数斜率（比单点稳健）
+    deep_side = +1 if (d_hi or 0.0) >= (d_lo or 0.0) else -1
+    c09 = cross(deep_side, 0.9)
+    c1e = cross(deep_side, 1.0 / math.e)
+    if c09 is not None and c1e is not None and c1e > c09 > 0:
+        decay = math.log(0.9 * math.e) / (c1e - c09)
+    else:
+        decay = float("nan")
+
+    axis_name = "xyz"[axis]
+    axis_basis_profile = (
+        f"过峰值沿 axis={axis}({axis_name}) 的 1D 剖面"
+        + ("（自动选轴，非剂量学轴）" if auto_axis else "（调用方显式声明）")
+    )
+    reliability: dict[str, str] = {
+        "peak": "analytic",
+        "coverage_volumes_cm3": "analytic",
+        "focality_proxy": "analytic",
+        "penetration_depth_cm": profile_level if math.isfinite(penetr) else "unavailable",
+        "decay_per_cm": profile_level if math.isfinite(decay) else "unavailable",
+        "fwhm_cm": profile_level if math.isfinite(fwhm) else "unavailable",
+    }
+    warns = list(field.warnings) + [
+        "穿透深度/衰减/FWHM 为过峰值 1D 剖面指标，非 3D 体积量；"
+        + ("轴为自动选择（proxy），请显式传 axis 以冻结口径" if auto_axis
+           else f"轴={axis_name} 由调用方声明"),
+    ]
+
+    prov = dict(field.provenance)
+    prov.update({
+        "field_source": field.source_tool,
+        "source_ref": field.source_ref,
+        "field_key": field.field_key,
+        "field_unit": field.unit,
+        "scale_applied": field.scale_applied,
+        "voxel_size_cm": vox,
+        "voxel_volume_cm3": vox_vol,
+        "total_volume_cm3": total_vol,
+        "half_max_volume_cm3": half_vol,
+        "peak_index": peak_idx,
+        "profile_axis": axis,
+        "profile_axis_auto": auto_axis,
+        "anatomy_source": anatomy_source,
+    })
+    return DoseFeatureVector(
+        modality=modality, subject_id=subject_id, anatomy_source=anatomy_source,
+        peak=peak, peak_unit=field.unit,
+        peak_reference="外部数值场真解（网格/边界条件依赖）",
+        penetration_depth_cm=penetr, decay_per_cm=decay, fwhm_cm=fwhm,
+        coverage_depths_cm={},  # 真解无"深度分位"，体积走 coverage_volumes_cm3
+        coverage_volumes_cm3=coverage_vol,
+        focality_proxy=foc, focality_basis=axis_basis,
+        reliability=reliability,
+        warnings=tuple(warns),
+        provenance=prov,
+    )
+
+
 # ---------------------------------------------------------------------------
 # 群体特征分布（为 L3 供多主体输入，而非单一样本）
 # ---------------------------------------------------------------------------
@@ -361,7 +531,9 @@ def render(v: DoseFeatureVector) -> str:
         "  分层覆盖（分位数→深度/体积）：",
     ]
     for frac, val in sorted(v.coverage_depths_cm.items()):
-        lines.append(f"    ≥{frac:.0%} : {_r(val)}")
+        lines.append(f"    ≥{frac:.0%} 深度 : {_r(val)} cm")
+    for frac, val in sorted(v.coverage_volumes_cm3.items()):
+        lines.append(f"    ≥{frac:.0%} 体积 : {_r(val)} cm3")
     lines.append("  可信度：" + ", ".join(f"{k}={lv}" for k, lv in v.reliability.items()))
     for w in v.warnings:
         lines.append(f"  ⚠ {w}")
