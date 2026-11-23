@@ -2,6 +2,30 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与语义化版本。
 
+## [1.4.0] - 2026-11-23
+
+P2 数值场完整通路：外部真解可读 + 全指标。**判定内核、103 条证据、L1 条文内容零改动**。
+
+### 新增
+
+- **真解导入层**（`interface_atlas/field_import.py`）：开放 NPZ 契约（零新增依赖）、
+  SimNIBS NIfTI（nibabel 可选）、k-Wave MAT v5（scipy.io）/ v7.3（h5py 可选）、内存数组，
+  统一成 `NumericField`（显式单位 + 各向异性体素 + 来源 provenance）。三条铁律：
+  **不猜单位**（`field_unit` 必填）、**不复制外部数据**（只读路径、计算后弃数组）、
+  **真解 ≠ 体内剂量**（告警保留）。依赖缺失时给明确降级指引，不影响其余入口。
+- **全指标抽取器**（`dose_features.from_numeric_field_full`）：从真解算峰值 + 多分位覆盖体积
+  + 聚焦性体积分（各向异性 `sx·sy·sz`）+ 穿透深度 + 轴向衰减 + FWHM，按轴诚实分级——
+  显式 `axis` 的剖面指标标 `analytic`，自动选轴标 `proxy`，无交点标 `unavailable`。
+  新增 `DoseFeatureVector.coverage_volumes_cm3`，不再占用深度字段语义。
+- **CLI** `fieldimport --simnibs/--kwave/--npz --unit --describe --axis --as-json`；
+  文档 `FIELD_IMPORT.md`（格式契约 + 三条铁律 + 分级表）。
+
+### 为什么（外部事实触发）
+
+ROADMAP P2"数值场完整通路：电场/热场真解导入 → DoseFeatureVector 全指标，SimNIBS / k-Wave 输出可读"。
+此前 `from_numeric_field` 只是 ndarray 钩子，外部需自己猜体素与单位——接入口太原始，
+直接阻碍外部采用本包口径（北极星"领域依赖度"）。
+
 ## [1.3.0] - 2026-11-21
 
 L1 规范外部引用冲刺：把规范编译成可逐条引用、可版本冻结、可机器核对的条文注册表。**判定内核与 103 条证据零改动**。
